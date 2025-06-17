@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Fitness Coach
 
-## Getting Started
+App that lets you put the pieces together for your fitness life. 
+- Connects to your smartscale/healthkit to get your weight 
+- Has an integrated calorie tracker
+- Implements AI to provide recommendations that take a holistic approach: 
+    - Your weight
+    - Your eating habits
+    - Emotional state /external variables
+    - Sleeping
 
-First, run the development server:
+# How is this different from any other fitness app?
+In many ways it isn't. Except for a couple of critical factors: The unit of measure and the focus is the end user. I want you to lose weight, or gain muscle mass, I want you to live better. First and foremost. No monetization, no growth paths, no crazy expensive plans. 
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+# Tech stack
+- *CodeRabbit* for PR reviews, unit tests, docstrigs, security checks
+- *Next.js* framework
+- *Supabase* for both DB and auth
+- *Pinecone* for vector storage
+- *Inngest* for long running API calls to LLMs, and background processes.
+- *Vercel* for hosting
+- *Taskmaster* to keep track of the project, use AI break it down into smaller steps. 
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Substacks (particular dependencies worth noting) 
+- Tailwind
+- Vercel AI SDK
+- Shadcn for UI
+ 
