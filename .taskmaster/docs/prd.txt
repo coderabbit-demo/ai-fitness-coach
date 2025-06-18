@@ -1,0 +1,211 @@
+# AI Fitness Coach - Product Requirements Document (PRD)
+
+## Project Overview
+
+**Product Name:** AI Fitness Coach
+**Project Type:** Full-stack web application
+**Primary Goal:** Create a holistic fitness application that helps users achieve their health and fitness goals through intelligent recommendations and comprehensive tracking.
+
+## Product Vision
+
+An AI-powered fitness application that puts the user's success first - whether that's losing weight, gaining muscle mass, or simply living better. Unlike other fitness apps focused on monetization and growth, this app prioritizes genuine user outcomes through a holistic approach to health and wellness.
+
+## Core Value Proposition
+
+**What makes this different:** The unit of measure and focus is the end user's success. No monetization schemes, expensive plans, or growth hacks - just genuine commitment to helping users achieve their fitness goals through intelligent, personalized recommendations.
+
+## Technical Architecture
+
+### Tech Stack
+- **Framework:** Next.js (React-based)
+- **Database & Authentication:** Supabase
+- **Vector Storage:** Pinecone (for AI embeddings and similarity search)
+- **Background Processing:** Inngest (for long-running LLM API calls and background processes)
+- **Hosting:** Vercel
+- **Styling:** Tailwind CSS
+- **UI Components:** Shadcn/ui
+- **AI Integration:** Vercel AI SDK
+- **Code Quality:** CodeRabbit for PR reviews, unit tests, docstrings, and security checks
+
+## Core Features & Requirements
+
+### 1. Weight & Health Data Integration
+- **Smart Scale Integration:** Connect to user's smart scale for automatic weight tracking
+- **HealthKit Integration:** Sync with Apple HealthKit for to get weight data, and fitness data (i.e. weight lifting, running, etc.)
+- **Data Visualization:** Display weight trends, progress charts, and historical data --> but not these are secondary way of tracking progress. The whole point is that AI does the analysis and review for you and provides recommendations, the weight trends, progress, and historical data is just a way to validate, and double-click on where you're at, and where you've been. 
+- **Manual Entry Option:** Allow manual entry of weight, workouts (i.e. a 30 min run, and it will approximate calories burned)
+
+### 2. Calorie Tracking System
+- Take a picture and AI will approximate the calorie count/intake. Simple as that. Will use LLMs to send the picture with a system prompt/message -> receive, add to DB, -> Do another LLM with the calorie data to do a sanity check/validation and either mark it as approximate enough, or update it with the more correct range. The goal isn't to be perfect, but to be accurate enough to be useful WHILE minimizing the friction of tracking calories. If done well, reducing the friction in adding calories will be noted. 
+- **Progress Tracking:** Daily, weekly, and monthly calorie intake analysis, and reporting. Again, this is secondary (much like the weight loss reporting), it's really about having AI do the cohesive analysis (i.e. combining exercise and nutrition)
+
+### 3. AI-Powered Recommendation Engine
+The AI system should provide holistic recommendations based on multiple data points:
+
+#### Input Data Sources:
+- **Weight Data:** Current weight, weight trends, BMI, body composition
+- **Eating Habits:** Calorie intake, food preferences and psychology of habits
+- **Emotional State:** Mood tracking, stress levels, motivation indicators --> really focusing on habit formation and incremental steps. 
+- **Sleep Patterns:** Sleep duration, quality, consistency BUT really, did you get enough sleep (boolean). Simple and approximate is good, we can get into more granular detail later. 
+- **External Variables:** Weather, schedule changes, social events, work stress -> use a conversation with the LLM and/or text input to note anything else to be logged and analyzed alongside numerical data. 
+
+#### AI Recommendation Types:
+- **Personalized Workout Plans:** Based on goals, current fitness level, and available time
+- **Nutritional Guidance:** Meal suggestions, focusing on broad basics: building incrementally better habits, being in a calorie deficit (if that's what's needed) or getting enough protein, if that's what's needed. 
+- **Behavioral Insights:** Identify patterns affecting progress and suggest INCREMENTAL improvements. 
+- **Goal Adjustments:** Realistic goal setting based on progress and life circumstances
+- **Motivation Support:** Personalized encouragement and milestone recognition. This part could be fun, what if we channel different personalities as your coach? Could be sassy, witty, a drill sargent, etc. All personalized to you. 
+
+### 4. Emotional & External Variable Tracking
+- **Mood Check-ins:** Daily emotional state logging - BUT keep it simple, maybe a multi-select with a few options is a good start. 
+- **Stress Level Monitoring:** Integration with external stress indicators BUT start with just logging. It can be part of the emotianal check. Again, focus on driving habits, and good enough indicators for it to be useful while driving adoption.
+- **Life Event Tracking:** Log significant events that might affect fitness goals -> this can be part of the external variables input. Just text. (We can finally do that now!). 
+- **Correlation Analysis:** AI identifies patterns between emotional state and fitness, weight and calorie intake, progress, etc. 
+
+### 5. Sleep Integration
+- **Sleep Data Import:** Connect with sleep tracking devices/apps - BUT also start with simple approximations and some inputs. (i.e. what time did you go to sleep/wake up) and or/ how do you feel (energized, tired, etc. multi-select)
+- **Sleep Recommendation:** AI-powered sleep hygiene suggestions that take into account everything. It's silly to recommend to get better sleep if external factors knows you're prepping for a final, for example. Instead it tries to mitigate the impact and help with recovery. Things like that. 
+- **Recovery Correlation:** Link sleep patterns to workout performance and recovery - broad and good enough is ok. We are looking for trendlines. 
+
+## User Experience Requirements
+
+### 1. User Onboarding
+- **Goal Setting:** Define primary fitness objectives (weight loss, muscle gain, general health)
+- **Profile Setup:** Age, gender, activity level, health conditions, preferences
+- **Device Integration:** Guided setup for smart scale, HealthKit, sleep trackers
+- **AI Calibration:** Initial data collection for personalized recommendations
+- **Focus on getting to useful** Don't know what that is - but should be architected for this. The least amount of information to get the app to be used (and be useful) and incrementally getting more input as way to improve results and outcomes. Incremental is perfectly fine. 
+
+### 2. Daily User Flow
+- **Morning Check-in:** Weight logging, mood assessment, sleep quality rating
+- **Meal Logging:** Easy food entry throughout the day
+- **Workout Tracking:** Exercise logging with AI-suggested routines
+- **Evening Reflection:** Daily progress review and next-day planning
+- Same above. Focus on the minimal amount of interruptions to be helpful. Incrementally adding more as the app gets to be useful (in a way compounding efforts)
+
+### 3. Dashboard & Analytics
+- **Progress Overview:** Visual representation of all key metrics
+- **AI Insights Panel:** Daily personalized recommendations and insights
+- **Trend Analysis:** Long-term progress visualization
+- **Goal Tracking:** Clear progress indicators toward user-defined objectives
+
+## Technical Implementation Requirements
+
+### 1. Database Schema (Supabase)
+- **User Profiles:** Demographics, goals, preferences, device connections
+- **Health Data:** Weight, body composition, vital signs, sleep data
+- **Nutrition Data:** Food intake, meal logs, nutritional analysis
+- **Workout Data:** Exercise logs, performance metrics, workout plans
+- **Emotional Data:** Mood logs, stress indicators, life events
+- **AI Data:** Recommendation history, model predictions, user feedback
+- Supabase will also be used used for Auth 
+- Database, Next.js, Supabase auth, RLS at the DB level will be used for multi-tenancy architecture. 
+- Native support for a single user roll this out and use it - with minimal configuration and friction. 
+
+
+### 2. AI/ML Components (Pinecone + LLMs)
+- **Vector Embeddings:** Only used if needed to get context information. Because we can pre-emptively segment the data we need based on the analysis, there is a good chance vector embeddings won't be needed. At least for individual's tracking. They could be helpful for users, if we ever create a way to analyze all data accross users (But with security and privacy implications, very unlikely)
+- **Large Language Models:** Generate personalized recommendations and insights, used to approximate calorie intake, etc. LLMS are also used to do the analysis. 
+
+### 3. Background Processing (Inngest)
+- **Data Synchronization:** Regular import from connected devices and apps
+- **AI Model Updates:** Periodic retraining and recommendation generation
+- **Notification System:** Intelligent reminders and motivation messages
+- **Report Generation:** Automated weekly/monthly progress reports
+
+### 4. Security & Privacy
+- **Data Encryption:** All health data encrypted at rest and in transit
+- **User Consent:** Clear permissions for data collection and usage
+- **Data Portability:** Allow users to export their data
+- **Compliance:** Ensure HIPAA compliance for health data handling
+
+## Success Metrics
+
+### 1. User Engagement
+- Daily active users maintaining consistent logging
+- Average session duration and feature usage
+- User retention rates over 3, 6, and 12 months
+
+### 2. Health Outcomes
+- Percentage of users achieving their stated goals
+- Average weight loss/gain as appropriate to user goals
+- Improvement in self-reported wellness metrics
+
+### 3. AI Effectiveness
+- User satisfaction with AI recommendations
+- Accuracy of AI predictions vs. actual outcomes
+- Frequency of users following AI suggestions
+
+## Development Phases
+
+Re development phases. More than a clean phases with distinct setup of whole systems (i.e. setup the entire model for the database), we instead focus on discrete features that add value. There is some baseline configuration, but again, that is minimal, and incremental as a way to get to the next feature/component to implement. This means:
+- Next.js and Vercel setup goes first (as away to preview, and deploy to prod quickly)
+- Create the UI:
+    - Login page
+    - Home page
+    - Onboarding page and flow (initial minimal configuration)
+    - 
+
+### Onboarding flow and minimal configuration
+- Create goals, based on natural language. Would be super cool if the AI has an intial conversation and creates the rules based on that. 
+- Has an option to enter text (i.e. if the user prefers it, is a place where they can't talk)
+- Goals are stored as JSON and cover the baseline areas: Weight, sleep, eating habits, any external life events to set as baseline. 
+- Flows:
+    - For voice: intial system prompt/message -> initalize voice (and setup the front-end to support this) -> transcribe via LLM -> save to DB -> ask follow-ups until LLM has the context it needs -> transcribe -> save to db. The db object should be both the natural language back and forth (as rows) and the resulting json object. Mapped to a tenant with RLS protections at DB
+    - For text/select inputs: multiple screens that take the use through the config, shows a progress bar, each screen saves to the db (JSON object), tracks progress and saves to dB (to account for incomplete profiles), and finally, saves the final result int the same db table and row, witht the tenant, and updated status of complete. 
+
+- Creates an initial recommendation (yes, with that single input take)
+    - Internally it creates an initial recommendation based on those inputs, trying to get the smallest tangible gain. 
+
+
+
+### Phase 1: Core Infrastructure
+- Set up Next.js application with Supabase backend
+- Set up Vercel deployment pipeline
+- Create clean, mobile-first UI relying heavily on ShadCN components
+- Implement user authentication and basic profile management
+- Create database schema and initial API endpoints
+
+
+### Phase 2: Data Integration
+- Implement HealthKit and smart scale integrations
+- Build calorie tracking system with food database
+- Create basic data visualization components
+- Set up Inngest for background processing
+
+### Phase 3: AI Implementation
+- Integrate Pinecone for vector storage
+- Implement basic recommendation engine
+- Add Vercel AI SDK for LLM interactions
+- Create initial AI-powered insights
+
+### Phase 4: Advanced Features
+- Implement emotional and sleep tracking
+- Enhance AI recommendations with multi-factor analysis
+- Add advanced analytics and reporting
+- Implement intelligent notification system
+
+### Phase 5: Polish & Optimization
+- Comprehensive testing and bug fixes
+- Performance optimization
+- User experience refinements
+- CodeRabbit integration for code quality
+
+## Constraints & Considerations
+
+### 1. Technical Constraints
+- Must work across web browsers
+- Mobile first with support for desktop
+- Fast loading times despite complex AI processing, with good UX practices (i.e. afforances, etc.)
+- Reliable data synchronization across devices
+- Can worth both for a single tenant (i.e someone deploying this for themselves) and for multi-tenancy. 
+
+### 2. User Experience Constraints
+- Simple, intuitive interface despite complex functionality
+- Minimal user friction for daily logging activities
+- Clear, actionable AI recommendations
+- Respectful handling of sensitive health data
+
+### 3. Business Constraints
+- This is an OSS app, we are just trying to make something cool and useful. Something we would use ourselves and share. 
+
