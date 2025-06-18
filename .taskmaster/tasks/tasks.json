@@ -1,0 +1,153 @@
+{
+  "tags": {
+    "master": {
+      "metadata": {
+        "name": "master",
+        "description": "Main development tasks for AI Fitness Coach",
+        "created": "2025-01-21T00:00:00.000Z",
+        "lastModified": "2025-01-21T00:00:00.000Z"
+      },
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Set up Next.js application with Supabase backend",
+          "description": "Set up the core infrastructure including Next.js, Supabase authentication, database schema, and Vercel deployment.",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [],
+          "details": "This task involves setting up the foundation:\n- Initialize Next.js project with TypeScript\n- Configure Supabase for authentication and database\n- Set up Row Level Security (RLS) for multi-tenant architecture\n- Create initial API endpoints\n- Configure Vercel deployment pipeline\n- Set up environment variables and configuration",
+          "testStrategy": "Verify successful deployment to Vercel, test user registration and authentication, confirm database connections work properly.",
+          "subtasks": []
+        },
+        {
+          "id": 2,
+          "title": "Create mobile-first UI foundation with ShadCN",
+          "description": "Build responsive design system with Tailwind CSS and ShadCN components for mobile-first experience.",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [1],
+          "details": "Create the UI foundation:\n- Set up Tailwind CSS configuration\n- Install and configure ShadCN/ui components\n- Create responsive design system and theme\n- Build login page with mobile-first design\n- Create home page layout and navigation\n- Implement loading states and UI affordances",
+          "testStrategy": "Test responsiveness across mobile and desktop, verify ShadCN components work correctly, validate accessibility standards.",
+          "subtasks": []
+        },
+        {
+          "id": 3,
+          "title": "Implement voice-based onboarding flow",
+          "description": "Create AI-powered conversation interface for natural language goal setting during user onboarding.",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [1, 2],
+          "details": "Build intelligent onboarding:\n- Implement speech-to-text using Vercel AI SDK\n- Create conversational AI interface with LLM\n- Design natural language goal extraction system\n- Build fallback text input option\n- Save user preferences as JSON with RLS protection\n- Create progress tracking for incomplete profiles\n- Generate initial AI recommendations from onboarding data",
+          "testStrategy": "Test voice recognition accuracy, verify conversation flow leads to complete profiles, confirm initial recommendations are generated.",
+          "subtasks": []
+        },
+        {
+          "id": 4,
+          "title": "Create AI-powered photo calorie tracking",
+          "description": "Implement photo-based calorie estimation using LLMs with validation system to minimize tracking friction.",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [1],
+          "details": "Build photo calorie system:\n- Implement image upload/camera capture functionality\n- Create LLM integration for initial calorie estimation\n- Build secondary LLM validation system for accuracy\n- Design simple approval/correction interface\n- Create food logging database schema\n- Implement daily/weekly calorie tracking\n- Focus on 'good enough' accuracy over perfection",
+          "testStrategy": "Test photo upload functionality, verify LLM calorie estimates are reasonable, confirm validation system catches major errors.",
+          "subtasks": []
+        },
+        {
+          "id": 5,
+          "title": "Implement HealthKit integration for iOS",
+          "description": "Connect to Apple HealthKit for automatic weight and fitness data sync with manual entry fallbacks.",
+          "status": "pending",
+          "priority": "medium",
+          "dependencies": [1],
+          "details": "Build HealthKit integration:\n- Implement HealthKit permissions and data access\n- Create weight data synchronization\n- Build fitness activity import (workouts, steps)\n- Design manual entry system for non-iOS users\n- Create data visualization focused on trends not details\n- Implement background sync with Inngest\n- Handle data privacy and user consent",
+          "testStrategy": "Test HealthKit permissions flow, verify data sync works correctly, confirm manual entry works as fallback.",
+          "subtasks": []
+        },
+        {
+          "id": 6,
+          "title": "Build AI recommendation engine",
+          "description": "Create holistic AI system that analyzes weight, nutrition, sleep, and emotional data to provide personalized recommendations.",
+          "status": "pending",
+          "priority": "high",
+          "dependencies": [3, 4, 5],
+          "details": "Build AI recommendation system:\n- Design data integration from all sources (weight, food, sleep, mood)\n- Create LLM-based analysis system using Vercel AI SDK\n- Build recommendation generation focused on incremental improvements\n- Implement different coaching personalities (sassy, supportive, drill sergeant)\n- Create habit formation focus rather than perfection\n- Design contextual recommendations based on life events\n- Implement Pinecone only if needed for user similarity",
+          "testStrategy": "Test recommendation quality with sample data, verify personality variations work, confirm recommendations are actionable and incremental.",
+          "subtasks": []
+        },
+        {
+          "id": 7,
+          "title": "Implement simple sleep and mood tracking",
+          "description": "Create low-friction sleep and emotional state logging with multi-select options and basic analysis.",
+          "status": "pending",
+          "priority": "medium",
+          "dependencies": [1, 2],
+          "details": "Build mood and sleep tracking:\n- Create simple sleep logging (bedtime, wake time, energy level)\n- Design multi-select mood check-ins\n- Build stress level indicators\n- Create text input for external variables/life events\n- Implement daily check-in flow\n- Focus on trends over precision\n- Design correlation analysis with other health data",
+          "testStrategy": "Test daily check-in flow, verify data saves correctly, confirm correlation analysis provides useful insights.",
+          "subtasks": []
+        },
+        {
+          "id": 8,
+          "title": "Set up background processing with Inngest",
+          "description": "Implement background jobs for data sync, AI analysis, and automated reporting using Inngest.",
+          "status": "pending",
+          "priority": "medium",
+          "dependencies": [1, 4, 5],
+          "details": "Build background processing:\n- Set up Inngest configuration and API endpoints\n- Create data synchronization jobs for HealthKit\n- Build AI analysis jobs for recommendation generation\n- Implement weekly/monthly report generation\n- Create notification system for reminders\n- Design failure handling and retry logic\n- Implement job monitoring and logging",
+          "testStrategy": "Test background jobs run correctly, verify data sync works reliably, confirm reports generate automatically.",
+          "subtasks": []
+        },
+        {
+          "id": 9,
+          "title": "Create dashboard with AI insights",
+          "description": "Build main dashboard that emphasizes AI recommendations over detailed charts and analytics.",
+          "status": "pending",
+          "priority": "medium",
+          "dependencies": [6, 7],
+          "details": "Build AI-focused dashboard:\n- Create main dashboard layout with AI insights prominent\n- Design recommendation display system\n- Build secondary data visualization for validation\n- Implement progress indicators toward goals\n- Create quick action buttons for logging\n- Design motivational elements and milestone recognition\n- Focus on actionable insights over raw data",
+          "testStrategy": "Test dashboard loads quickly, verify AI insights are prominently displayed, confirm quick actions work smoothly.",
+          "subtasks": []
+        },
+        {
+          "id": 10,
+          "title": "Implement manual workout logging",
+          "description": "Create simple workout entry system with calorie approximation for activities not tracked by HealthKit.",
+          "status": "pending",
+          "priority": "low",
+          "dependencies": [1, 2],
+          "details": "Build workout logging:\n- Create workout type selection (running, weights, etc.)\n- Implement duration and intensity input\n- Build calorie approximation system\n- Design workout history view\n- Create integration with HealthKit data\n- Focus on simplicity over detailed tracking\n- Implement AI suggestions for workout adjustments",
+          "testStrategy": "Test workout entry flow, verify calorie calculations are reasonable, confirm data integrates with overall analysis.",
+          "subtasks": []
+        },
+        {
+          "id": 11,
+          "title": "Add data export and privacy controls",
+          "description": "Implement user data export, privacy controls, and HIPAA compliance features.",
+          "status": "pending",
+          "priority": "low",
+          "dependencies": [1],
+          "details": "Build privacy and export features:\n- Create data export functionality (JSON/CSV)\n- Implement privacy controls and data deletion\n- Build consent management system\n- Ensure HIPAA compliance for health data\n- Create data portability features\n- Implement audit logging for data access\n- Design clear privacy policy integration",
+          "testStrategy": "Test data export works correctly, verify deletion removes all user data, confirm privacy controls function properly.",
+          "subtasks": []
+        },
+        {
+          "id": 12,
+          "title": "Optimize for single-tenant deployment",
+          "description": "Ensure application can be easily deployed by individual users for personal use while maintaining multi-tenant capability.",
+          "status": "pending",
+          "priority": "low",
+          "dependencies": [1, 2, 3, 4],
+          "details": "Build deployment flexibility:\n- Create single-tenant configuration options\n- Simplify environment setup for individual users\n- Build deployment documentation for personal use\n- Ensure minimal configuration needed\n- Create Docker container option\n- Design easy migration between single and multi-tenant\n- Implement feature flags for tenant-specific functionality",
+          "testStrategy": "Test single-tenant deployment works with minimal configuration, verify documentation is clear and complete.",
+          "subtasks": []
+        }
+      ]
+    }
+  },
+  "global": {
+    "defaultTag": "master",
+    "currentTag": "master",
+    "version": "2.0.0",
+    "projectName": "AI Fitness Coach",
+    "projectDescription": "AI-powered fitness application that helps users achieve their health and fitness goals through intelligent recommendations and comprehensive tracking"
+  }
+} 
