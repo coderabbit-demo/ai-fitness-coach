@@ -40,9 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# MCP servers
+# MCP servers & Cursor
 .mcp.json
 mcp.json
+.cursor/*
+.roo/*
 
 # Added by Task Master AI
 # Logs
