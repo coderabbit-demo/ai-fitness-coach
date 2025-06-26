@@ -318,11 +318,6 @@ import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 export async function logAIOperation(
@@ -349,17 +344,6 @@ export async function logAIOperation(
     console.error('Error logging AI operation:', error)
   }
 }
-    console.error('Error logging AI operation:', error)
-  }
-}
-- **Fallback Strategies:**
-  ```typescript
-  // ✅ DO: Provide meaningful fallbacks
-  export function generateFallbackRecommendation(userData: UserHealthData): Recommendation {
-    // Template-based fallback when AI fails
-    const templates = {
-      weightLoss: "Focus on creating a small calorie deficit through portion control and light exercise.",
-      muscleGain: "Ensure adequate protein intake and progressive strength training.",
       general: "Maintain consistency with your current routine and focus on one small improvement."
     }
     
