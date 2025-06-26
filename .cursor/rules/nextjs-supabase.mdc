@@ -1,0 +1,237 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Next.js + Supabase Integration Rules for AI Fitness Coach
+
+## **Database Client Patterns**
+
+- **Use Consistent Client Creation:**
+  ```typescript
+  // ✅ DO: Use appropriate client based on context
+  import { createClient } from '@/utils/supabase/client'     // Client components
+  import { createClient } from '@/utils/supabase/server'     // Server components/API routes
+  import { createClient } from '@/utils/supabase/middleware' // Middleware
+  
+  // ❌ DON'T: Mix client types or create inline clients
+  const supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!)
+  ```
+
+- **Server vs Client Component Data Fetching:**
+  ```typescript
+  // ✅ DO: Server components for initial data
+  export default async function Dashboard() {
+    const supabase = createClient()
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .single()
+    
+    return <DashboardClient initialProfile={profile} />
+  }
+  
+  // ✅ DO: Client components for interactive data
+  'use client'
+  export function WeightChart() {
+    const [weights, setWeights] = useState([])
+    const supabase = createClient()
+    
+    useEffect(() => {
+      supabase.from('weight_logs').select('*').then(setWeights)
+    }, [])
+  }
+  ```
+
+## **Row Level Security (RLS) Patterns**
+
+- **Always Use User ID in Queries:**
+  ```typescript
+  // ✅ DO: Include user_id in all health data queries
+  const { data } = await supabase
+    .from('weight_logs')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+  
+  // ❌ DON'T: Query without user context
+  const { data } = await supabase.from('weight_logs').select('*')
+  ```
+
+- **Create RLS Policies for Health Data:**
+  ```sql
+  -- ✅ DO: Strict RLS for health data
+  CREATE POLICY "Users can only access their own weight logs" ON weight_logs
+    FOR ALL USING (auth.uid() = user_id);
+  
+  CREATE POLICY "Users can only access their own nutrition logs" ON nutrition_logs
+    FOR ALL USING (auth.uid() = user_id);
+  ```
+
+## **Authentication Patterns**
+
+- **Use Consistent Auth Checking:**
+  ```typescript
+  // ✅ DO: Server-side auth check
+  export async function getServerSideProps({ req }) {
+    const supabase = createClient(req)
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      return { redirect: { destination: '/login', permanent: false } }
+    }
+    return { props: { user } }
+  }
+  
+  // ✅ DO: Client-side auth hook
+  export function useAuthRequired() {
+    const router = useRouter()
+    const [user, setUser] = useState(null)
+    
+    useEffect(() => {
+      const supabase = createClient()
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) router.push('/login')
+        else setUser(user)
+      })
+    }, [])
+    
+    return user
+  }
+  ```
+
+## **Health Data Handling**
+
+- **Encrypt Sensitive Health Data:**
+  ```typescript
+  // ✅ DO: Encrypt PII before storing
+  import { encrypt, decrypt } from '@/utils/encryption'
+  
+  const storeHealthData = async (data: HealthData) => {
+    const encryptedData = {
+      ...data,
+      medical_conditions: encrypt(data.medical_conditions),
+      medications: encrypt(data.medications)
+    }
+    
+    return supabase.from('user_profiles').upsert(encryptedData)
+  }
+  ```
+
+- **Use Proper Types for Health Data:**
+  ```typescript
+  // ✅ DO: Define comprehensive health data types
+  export interface WeightLog {
+    id: string
+    user_id: string
+    weight_kg: number
+    body_fat_percentage?: number
+    muscle_mass_kg?: number
+    recorded_at: string
+    source: 'manual' | 'smart_scale' | 'healthkit'
+    created_at: string
+  }
+  
+  export interface NutritionLog {
+    id: string
+    user_id: string
+    food_items: FoodItem[]
+    total_calories: number
+    image_url?: string
+    confidence_score?: number
+    created_at: string
+  }
+  ```
+
+## **Real-time Subscriptions**
+
+- **Use Subscriptions for Live Updates:**
+  ```typescript
+  // ✅ DO: Subscribe to user's health data changes
+  export function useWeightSubscription(userId: string) {
+    const [weights, setWeights] = useState<WeightLog[]>([])
+    
+    useEffect(() => {
+      const supabase = createClient()
+      
+      const subscription = supabase
+        .channel('weight_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'weight_logs',
+          filter: `user_id=eq.${userId}`
+        }, (payload) => {
+          // Handle real-time updates
+        })
+        .subscribe()
+        
+      return () => subscription.unsubscribe()
+    }, [userId])
+    
+    return weights
+  }
+  ```
+
+## **Error Handling**
+
+- **Consistent Error Handling Pattern:**
+  ```typescript
+  // ✅ DO: Use consistent error handling
+  export async function saveWeightLog(weight: number): Promise<ApiResponse<WeightLog>> {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('weight_logs')
+        .insert({ weight_kg: weight, user_id: user.id })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      return { success: true, data }
+    } catch (error) {
+      console.error('Failed to save weight log:', error)
+      return { 
+        success: false, 
+        error: 'Failed to save weight log. Please try again.' 
+      }
+    }
+  }
+  ```
+
+## **API Route Patterns**
+
+- **Consistent API Route Structure:**
+  ```typescript
+  // ✅ DO: Standard API route pattern
+  export async function POST(request: Request) {
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      
+      const body = await request.json()
+      // Validate input
+      const validatedData = WeightLogSchema.parse(body)
+      
+      const { data, error } = await supabase
+        .from('weight_logs')
+        .insert({ ...validatedData, user_id: user.id })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      return NextResponse.json({ data })
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Internal server error' }, 
+        { status: 500 }
+      )
+    }
+  }
+  ```

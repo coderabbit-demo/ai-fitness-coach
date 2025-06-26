@@ -43,7 +43,6 @@ next-env.d.ts
 # MCP servers & Cursor
 .mcp.json
 mcp.json
-.cursor/*
 .roo/*
 
 # Added by Task Master AI
