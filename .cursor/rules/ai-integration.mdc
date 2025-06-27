@@ -1,0 +1,358 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# AI Integration Rules for AI Fitness Coach
+
+## **Vercel AI SDK Patterns**
+
+- **Use Consistent AI Client Setup:**
+  ```typescript
+  // ✅ DO: Configure AI client with proper error handling
+  import { openai } from '@ai-sdk/openai'
+  import { generateText, generateObject } from 'ai'
+  
+  const aiClient = openai({
+    apiKey: process.env.OPENAI_API_KEY,
+    // Configure for health data processing
+    maxRetries: 3,
+    timeout: 30000
+  })
+  ```
+
+- **Structure Health Data Prompts:**
+  ```typescript
+  // ✅ DO: Use structured prompts for health analysis
+  const generateFitnessRecommendation = async (userData: UserHealthData) => {
+    const systemPrompt = `You are an AI fitness coach focused on user success and incremental improvements. 
+    Analyze the user's data and provide personalized, actionable recommendations.
+    
+    User Context:
+    - Goals: ${userData.goals}
+    - Current metrics: Weight ${userData.currentWeight}kg, Activity level: ${userData.activityLevel}
+    - Recent patterns: ${userData.recentPatterns}
+    
+    Provide recommendations that are:
+    1. Specific and actionable
+    2. Realistic given their current situation
+    3. Focus on small, incremental improvements
+    4. Consider their emotional state and external factors`
+    
+    const { text } = await generateText({
+      model: aiClient,
+      system: systemPrompt,
+      prompt: `Generate personalized fitness recommendations for today.`
+    })
+    
+    return text
+  }
+  ```
+
+## **Food Recognition & Calorie Estimation**
+
+- **Image Analysis for Food Logging:**
+  ```typescript
+  // ✅ DO: Multi-step food analysis with validation
+  export async function analyzeFoodImage(imageBase64: string): Promise<NutritionEstimate> {
+    // Step 1: Initial food identification
+    const initialAnalysis = await generateObject({
+      model: aiClient,
+      schema: z.object({
+        foodItems: z.array(z.object({
+          name: z.string(),
+          estimatedQuantity: z.string(),
+          confidence: z.number().min(0).max(1)
+        })),
+        totalCaloriesEstimate: z.number(),
+        confidence: z.number().min(0).max(1)
+      }),
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Analyze this food image and identify all food items with calorie estimates. Be conservative with estimates - it\'s better to slightly underestimate than overestimate.'
+            },
+            {
+              type: 'image',
+              image: imageBase64
+            }
+          ]
+        }
+      ]
+    })
+    
+    // Step 2: Validation and refinement
+    const validation = await generateObject({
+      model: aiClient,
+      schema: z.object({
+        isReasonable: z.boolean(),
+        adjustedCalories: z.number(),
+        reasoning: z.string()
+      }),
+      prompt: `Validate this food analysis: ${JSON.stringify(initialAnalysis.object)}
+      
+      Check if the calorie estimates are reasonable. Adjust if needed.`
+    })
+    
+    return {
+      ...initialAnalysis.object,
+      finalCalories: validation.object.adjustedCalories,
+      validationNotes: validation.object.reasoning
+    }
+  }
+
+- **Handle AI Uncertainty:**
+  ```typescript
+  // ✅ DO: Gracefully handle low-confidence results
+  export function processNutritionAnalysis(result: NutritionEstimate) {
+    if (result.confidence < 0.7) {
+      return {
+        ...result,
+        requiresUserConfirmation: true,
+        message: "I'm not entirely sure about this estimate. Please review and adjust if needed."
+      }
+    }
+    
+    return {
+      ...result,
+      requiresUserConfirmation: false,
+      message: "Nutrition estimate looks good!"
+    }
+  }
+  ```
+
+## **Holistic Health Analysis**
+
+- **Multi-Factor Recommendation Engine:**
+  ```typescript
+  // ✅ DO: Comprehensive health data analysis
+  export async function generateDailyRecommendations(
+    userId: string
+  ): Promise<DailyRecommendations> {
+    // Gather user data from multiple sources
+    const [profile, recentWeights, nutrition, sleep, mood] = await Promise.all([
+      getUserProfile(userId),
+      getRecentWeightLogs(userId, 7), // Last 7 days
+      getRecentNutritionLogs(userId, 3), // Last 3 days
+      getRecentSleepData(userId, 3),
+      getRecentMoodLogs(userId, 7)
+    ])
+    
+    const contextPrompt = `
+    User Profile: ${JSON.stringify(profile)}
+    Weight Trend: ${analyzeWeightTrend(recentWeights)}
+    Nutrition Pattern: ${analyzeNutritionPattern(nutrition)}
+    Sleep Quality: ${analyzeSleepPattern(sleep)}
+    Mood Trend: ${analyzeMoodTrend(mood)}
+    `
+    
+    const recommendations = await generateObject({
+      model: aiClient,
+      schema: DailyRecommendationsSchema,
+      system: `You are an expert fitness coach focused on user success through incremental improvements.
+      Analyze all available data to provide personalized recommendations.
+      
+      Key principles:
+      - Small, achievable changes
+      - Consider emotional state and life circumstances
+      - Focus on building sustainable habits
+      - Be encouraging and supportive`,
+      prompt: `Based on this user's data, generate today's recommendations: ${contextPrompt}`
+    })
+    
+    return recommendations.object
+  }
+  ```
+
+## **Background AI Processing with Inngest**
+
+- **Queue AI Analysis Jobs:**
+  ```typescript
+  // ✅ DO: Use Inngest for long-running AI operations
+  import { inngest } from '@/lib/inngest'
+  
+  export const analyzeWeeklyProgress = inngest.createFunction(
+    { id: 'analyze-weekly-progress' },
+    { cron: '0 9 * * 1' }, // Every Monday at 9 AM
+    async ({ step, event }) => {
+      const users = await step.run('get-active-users', async () => {
+        return getActiveUsers()
+      })
+      
+      for (const user of users) {
+        await step.run(`analyze-user-${user.id}`, async () => {
+          const weeklyData = await getWeeklyUserData(user.id)
+          const analysis = await generateWeeklyAnalysis(weeklyData)
+          
+          await saveWeeklyReport(user.id, analysis)
+          await sendWeeklyProgressEmail(user.id, analysis)
+        })
+      }
+    }
+  )
+  ```
+
+- **Handle AI Failures Gracefully:**
+  ```typescript
+  // ✅ DO: Implement retry logic for AI operations
+  export async function generateRecommendationWithRetry(
+    userData: UserHealthData,
+    maxRetries = 3
+  ): Promise<Recommendation> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await generateFitnessRecommendation(userData)
+      } catch (error) {
+        console.error(`AI generation attempt ${attempt} failed:`, error)
+        
+        if (attempt === maxRetries) {
+          // Fallback to template-based recommendation
+          return generateFallbackRecommendation(userData)
+        }
+        
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
+    }
+  }
+  ```
+
+## **Conversational Onboarding**
+
+- **Voice-to-Text Processing:**
+  ```typescript
+  // ✅ DO: Process voice input for goal setting
+  export async function processVoiceOnboarding(audioData: string): Promise<OnboardingData> {
+    // Transcribe audio
+    const transcription = await transcribeAudio(audioData)
+    
+    // Extract structured data from conversation
+    const onboardingData = await generateObject({
+      model: aiClient,
+      schema: OnboardingDataSchema,
+      system: `You are helping users set up their fitness goals through natural conversation.
+      Extract structured information from their responses to create their profile.
+      
+      Ask follow-up questions if important information is missing.`,
+      prompt: `User said: "${transcription}"
+      
+      Extract their fitness goals, current situation, and preferences.`
+    })
+    
+    return onboardingData.object
+  }
+  ```
+
+- **Adaptive Follow-up Questions:**
+  ```typescript
+  // ✅ DO: Generate contextual follow-up questions
+  export async function generateFollowUpQuestion(
+    partialProfile: Partial<UserProfile>
+  ): Promise<string> {
+    const missingFields = identifyMissingFields(partialProfile)
+    
+    const { text } = await generateText({
+      model: aiClient,
+      system: `You are conducting a friendly fitness onboarding conversation.
+      Ask one natural follow-up question to gather missing information.
+      Keep it conversational and encouraging.`,
+      prompt: `Current profile: ${JSON.stringify(partialProfile)}
+      Missing fields: ${missingFields.join(', ')}
+      
+      Generate one follow-up question to gather the most important missing information.`
+    })
+    
+    return text
+  }
+  ```
+
+## **Personality-Based Coaching**
+
+- **Dynamic Coaching Personalities:**
+  ```typescript
+  // ✅ DO: Implement different coaching styles
+  export const COACHING_PERSONALITIES = {
+    supportive: {
+      system: "You are a supportive, encouraging fitness coach who celebrates small wins and provides gentle guidance.",
+      tone: "warm, understanding, patient"
+    },
+    motivational: {
+      system: "You are an energetic, motivational coach who pushes users to achieve their best while staying positive.",
+      tone: "enthusiastic, inspiring, confident"
+    },
+    analytical: {
+      system: "You are a data-driven coach who provides detailed insights and evidence-based recommendations.",
+      tone: "professional, thorough, objective"
+    },
+    humorous: {
+      system: "You are a witty, fun coach who uses humor to make fitness enjoyable while keeping users motivated.",
+      tone: "playful, clever, encouraging"
+    }
+  }
+  
+  export async function generatePersonalizedMessage(
+    message: string,
+    personality: keyof typeof COACHING_PERSONALITIES,
+    userData: UserHealthData
+  ): Promise<string> {
+    const style = COACHING_PERSONALITIES[personality]
+    
+    const { text } = await generateText({
+      model: aiClient,
+      system: `${style.system}
+      
+      User context: ${JSON.stringify(userData)}
+      Tone: ${style.tone}`,
+      prompt: message
+    })
+    
+    return text
+  }
+  ```
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
+export async function logAIOperation(
+  operation: string,
+  input: any,
+  output: any,
+  success: boolean,
+  duration: number
+) {
+  try {
+    const { error } = await supabase.from('ai_operation_logs').insert({
+      operation,
+      input_size: JSON.stringify(input).length,
+      output_size: JSON.stringify(output).length,
+      success,
+      duration_ms: duration,
+      created_at: new Date().toISOString()
+    })
+
+    if (error) {
+      console.error('Failed to log AI operation:', error)
+    }
+  } catch (error) {
+    console.error('Error logging AI operation:', error)
+  }
+}
+      general: "Maintain consistency with your current routine and focus on one small improvement."
+    }
+    
+    return {
+      type: 'fallback',
+      message: templates[userData.primaryGoal] || templates.general,
+      confidence: 0.5,
+      source: 'template'
+    }
+  }
+  ```
+
