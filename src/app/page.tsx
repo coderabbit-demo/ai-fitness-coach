@@ -68,7 +68,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button size="lg" className="text-lg px-8 py-6 bg-white text-slate-900 hover:bg-slate-100" asChild>
-              <Link href="/signup">
+              <Link href="/login">
                 Start Your Journey
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
