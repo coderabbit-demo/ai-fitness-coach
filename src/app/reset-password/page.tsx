@@ -118,8 +118,8 @@ export default function ResetPasswordPage() {
         timeoutRef.current = setTimeout(() => {
           try {
             router.push("/login")
-          } catch (error) {
-            console.error("Navigation error:", error)
+          } catch (navigationError) {
+            console.error("Navigation error:", navigationError)
             setMessage({
               type: "error",
               text: "Navigation failed. Please click 'Go to Login Now' to continue.",
@@ -127,7 +127,8 @@ export default function ResetPasswordPage() {
           }
         }, 3000)
       }
-    } catch (error) {
+    } catch (updateError) {
+      console.error("Password update error:", updateError)
       setMessage({
         type: "error",
         text: "An unexpected error occurred. Please try again.",

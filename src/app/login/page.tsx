@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, User, Lock, Mail, Eye, EyeOff } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { clientLogger, logError, logAuthEvent } from "@/lib/logger"
 
 type AuthMode = "login" | "signup"
 
@@ -26,19 +27,41 @@ export default function LoginPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const router = useRouter()
 
+  // Log page initialization
+  useEffect(() => {
+    clientLogger.info('Login page initialized', { 
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+      currentMode: mode
+    })
+  }, [mode])
+
   const validatePassword = (pwd: string): string | null => {
+    clientLogger.debug('Validating password', { 
+      passwordLength: pwd.length,
+      hasLowercase: /[a-z]/.test(pwd),
+      hasUppercase: /[A-Z]/.test(pwd),
+      hasNumber: /[0-9]/.test(pwd)
+    })
+
     if (pwd.length < 8) {
+      clientLogger.warn('Password validation failed: too short', { length: pwd.length })
       return "Password must be at least 8 characters long"
     }
     if (!/[a-z]/.test(pwd)) {
+      clientLogger.warn('Password validation failed: missing lowercase')
       return "Password must contain at least one lowercase letter"
     }
     if (!/[A-Z]/.test(pwd)) {
+      clientLogger.warn('Password validation failed: missing uppercase')
       return "Password must contain at least one uppercase letter"
     }
     if (!/[0-9]/.test(pwd)) {
+      clientLogger.warn('Password validation failed: missing number')
       return "Password must contain at least one number"
     }
+    
+    clientLogger.debug('Password validation passed')
     return null
   }
 
@@ -47,13 +70,25 @@ export default function LoginPage() {
     setLoading(true)
     setMessage(null)
 
+    clientLogger.info(`Starting ${mode} process`, {
+      email: email ? `${email.substring(0, 3)}***@${email.split('@')[1] || 'unknown'}` : 'empty',
+      hasPassword: !!password,
+      hasConfirmPassword: mode === 'signup' ? !!confirmPassword : 'N/A',
+      hasFullName: mode === 'signup' ? !!fullName : 'N/A',
+      mode
+    })
+
     try {
       const supabase = createClient()
+      clientLogger.debug('Supabase client created successfully')
 
       if (mode === "signup") {
+        clientLogger.info('Processing signup request')
+        
         // Validate password requirements
         const passwordError = validatePassword(password)
         if (passwordError) {
+          clientLogger.error('Signup failed: password validation error', { error: passwordError })
           setMessage({ type: "error", text: passwordError })
           setLoading(false)
           return
@@ -61,26 +96,71 @@ export default function LoginPage() {
 
         // Check if passwords match
         if (password !== confirmPassword) {
+          clientLogger.error('Signup failed: passwords do not match')
           setMessage({ type: "error", text: "Passwords do not match" })
           setLoading(false)
           return
         }
 
+        // Log signup attempt
+        logAuthEvent('signup_attempt', undefined, {
+          email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty',
+          hasFullName: !!fullName,
+          fullNameLength: fullName?.length || 0
+        })
+
+        clientLogger.debug('Calling Supabase signUp', {
+          email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty',
+          hasPassword: !!password,
+          passwordLength: password.length,
+          fullName: fullName ? `${fullName.substring(0, 3)}***` : 'empty',
+          redirectUrl: `${window.location.origin}/profile`
+        })
+
         // Sign up user
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/profile`,
           },
         })
 
+        clientLogger.debug('Supabase signUp response received', {
+          hasData: !!data,
+          hasUser: !!data?.user,
+          userId: data?.user?.id,
+          userEmail: data?.user?.email ? `${data.user.email.substring(0, 3)}***@${data.user.email.split('@')[1]}` : 'unknown',
+          hasError: !!error,
+          errorMessage: error?.message,
+          errorCode: error?.code,
+          needsConfirmation: !data?.user?.email_confirmed_at
+        })
+
         if (error) {
+          logError(error, 'signup', {
+            email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty',
+            errorCode: error.code,
+            errorMessage: error.message
+          })
+          clientLogger.error('Signup failed with Supabase error', {
+            errorMessage: error.message,
+            errorCode: error.code,
+            errorName: error.name
+          })
           setMessage({ type: "error", text: error.message })
         } else {
+          logAuthEvent('signup_success', data?.user?.id, {
+            email: data?.user?.email ? `${data.user.email.substring(0, 3)}***@${data.user.email.split('@')[1]}` : 'unknown',
+            needsConfirmation: !data?.user?.email_confirmed_at
+          })
+          clientLogger.info('Signup successful', {
+            userId: data?.user?.id,
+            needsEmailConfirmation: !data?.user?.email_confirmed_at
+          })
           setMessage({
             type: "success",
             text: "Account created successfully! Please check your email to confirm your account before signing in.",
@@ -92,33 +172,92 @@ export default function LoginPage() {
           setFullName("")
           // Switch to login mode
           setMode("login")
+          clientLogger.info('Switched to login mode after successful signup')
         }
       } else {
+        clientLogger.info('Processing login request')
+        
+        logAuthEvent('login_attempt', undefined, {
+          email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty'
+        })
+
+        clientLogger.debug('Calling Supabase signInWithPassword', {
+          email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty',
+          hasPassword: !!password,
+          passwordLength: password.length
+        })
+
         // Sign in user
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
 
+        clientLogger.debug('Supabase signInWithPassword response received', {
+          hasData: !!data,
+          hasUser: !!data?.user,
+          userId: data?.user?.id,
+          userEmail: data?.user?.email ? `${data.user.email.substring(0, 3)}***@${data.user.email.split('@')[1]}` : 'unknown',
+          hasSession: !!data?.session,
+          hasError: !!error,
+          errorMessage: error?.message,
+          errorCode: error?.code
+        })
+
         if (error) {
+          logError(error, 'login', {
+            email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty',
+            errorCode: error.code,
+            errorMessage: error.message
+          })
+          clientLogger.error('Login failed with Supabase error', {
+            errorMessage: error.message,
+            errorCode: error.code,
+            errorName: error.name
+          })
           setMessage({ type: "error", text: error.message })
         } else {
-          // Redirect to dashboard on successful login
-          router.push("/dashboard")
+          logAuthEvent('login_success', data?.user?.id, {
+            email: data?.user?.email ? `${data.user.email.substring(0, 3)}***@${data.user.email.split('@')[1]}` : 'unknown',
+            sessionId: data?.session?.access_token ? 'present' : 'missing'
+          })
+          clientLogger.info('Login successful, redirecting to profile', {
+            userId: data?.user?.id,
+            hasSession: !!data?.session
+          })
+          // Redirect to profile on successful login
+          router.push("/profile")
         }
       }
     } catch (error) {
+      logError(error, `${mode}_unexpected`, {
+        email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty',
+        mode,
+        formData: {
+          hasEmail: !!email,
+          hasPassword: !!password,
+          hasConfirmPassword: mode === 'signup' ? !!confirmPassword : 'N/A',
+          hasFullName: mode === 'signup' ? !!fullName : 'N/A'
+        }
+      })
+      clientLogger.error(`Unexpected error during ${mode}`, {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        mode
+      })
       setMessage({
         type: "error",
         text: "An unexpected error occurred. Please try again.",
       })
     } finally {
       setLoading(false)
+      clientLogger.debug(`${mode} process completed`, { mode })
     }
   }
 
   const handleForgotPassword = async () => {
     if (!email) {
+      clientLogger.warn('Forgot password attempted without email')
       setMessage({ type: "error", text: "Please enter your email address first" })
       return
     }
@@ -126,35 +265,94 @@ export default function LoginPage() {
     setLoading(true)
     setMessage(null)
 
+    clientLogger.info('Processing password reset request', {
+      email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty'
+    })
+
     try {
       const supabase = createClient()
+      
+      logAuthEvent('password_reset_attempt', undefined, {
+        email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty'
+      })
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       })
 
+      clientLogger.debug('Supabase resetPasswordForEmail response', {
+        hasError: !!error,
+        errorMessage: error?.message,
+        errorCode: error?.code
+      })
+
       if (error) {
+        logError(error, 'password_reset', {
+          email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty',
+          errorCode: error.code
+        })
+        clientLogger.error('Password reset failed', {
+          errorMessage: error.message,
+          errorCode: error.code
+        })
         setMessage({ type: "error", text: error.message })
       } else {
+        logAuthEvent('password_reset_success', undefined, {
+          email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty'
+        })
+        clientLogger.info('Password reset email sent successfully')
         setMessage({
           type: "success",
           text: "Password reset email sent! Check your inbox for instructions.",
         })
       }
     } catch (error) {
+      logError(error, 'password_reset_unexpected', {
+        email: email ? `${email.substring(0, 3)}***@${email.split('@')[1]}` : 'empty'
+      })
+      clientLogger.error('Unexpected error during password reset', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
       setMessage({
         type: "error",
         text: "Failed to send password reset email. Please try again.",
       })
     } finally {
       setLoading(false)
+      clientLogger.debug('Password reset process completed')
     }
   }
 
   const isFormValid = () => {
-    if (mode === "signup") {
-      return email.trim() && password && confirmPassword && fullName.trim()
+    const valid = mode === "signup" 
+      ? email.trim() && password && confirmPassword && fullName.trim()
+      : email.trim() && password
+    
+    clientLogger.debug('Form validation check', {
+      mode,
+      isValid: valid,
+      hasEmail: !!email.trim(),
+      hasPassword: !!password,
+      hasConfirmPassword: mode === 'signup' ? !!confirmPassword : 'N/A',
+      hasFullName: mode === 'signup' ? !!fullName.trim() : 'N/A'
+    })
+    
+    return valid
+  }
+
+  // Log mode changes
+  const handleModeChange = (newMode: AuthMode) => {
+    clientLogger.info('Switching authentication mode', {
+      from: mode,
+      to: newMode
+    })
+    setMode(newMode)
+    setMessage(null)
+    setPassword("")
+    setConfirmPassword("")
+    if (newMode === 'login') {
+      setFullName("")
     }
-    return email.trim() && password
   }
 
   return (
@@ -187,7 +385,10 @@ export default function LoginPage() {
                     type="text"
                     placeholder="Enter your full name"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      setFullName(e.target.value)
+                      clientLogger.debug('Full name field updated', { hasValue: !!e.target.value })
+                    }}
                     required
                     disabled={loading}
                     className="pl-10"
@@ -205,7 +406,13 @@ export default function LoginPage() {
                   type="email"
                   placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    clientLogger.debug('Email field updated', { 
+                      hasValue: !!e.target.value,
+                      isValidFormat: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value)
+                    })
+                  }}
                   required
                   disabled={loading}
                   className="pl-10"
@@ -222,7 +429,14 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder={mode === "signup" ? "Create a password" : "Enter your password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    clientLogger.debug('Password field updated', { 
+                      hasValue: !!e.target.value,
+                      length: e.target.value.length,
+                      meetsMinLength: e.target.value.length >= 8
+                    })
+                  }}
                   required
                   disabled={loading}
                   className="pl-10 pr-10"
@@ -252,7 +466,13 @@ export default function LoginPage() {
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value)
+                      clientLogger.debug('Confirm password field updated', { 
+                        hasValue: !!e.target.value,
+                        matchesPassword: e.target.value === password
+                      })
+                    }}
                     required
                     disabled={loading}
                     className="pl-10 pr-10"
@@ -309,15 +529,10 @@ export default function LoginPage() {
             <div className="text-center text-sm text-gray-600">
               {mode === "login" ? (
                 <>
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <button
                     type="button"
-                    onClick={() => {
-                      setMode("signup")
-                      setMessage(null)
-                      setPassword("")
-                      setConfirmPassword("")
-                    }}
+                    onClick={() => handleModeChange("signup")}
                     className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
                   >
                     Sign up
@@ -328,13 +543,7 @@ export default function LoginPage() {
                   Already have an account?{" "}
                   <button
                     type="button"
-                    onClick={() => {
-                      setMode("login")
-                      setMessage(null)
-                      setPassword("")
-                      setConfirmPassword("")
-                      setFullName("")
-                    }}
+                    onClick={() => handleModeChange("login")}
                     className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
                   >
                     Sign in

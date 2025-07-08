@@ -26,8 +26,11 @@ export default function HomePage() {
               <Link href="/about" className="text-slate-600 hover:text-slate-900 transition-colors">
                 About
               </Link>
-              <Link href="/signup" className="text-slate-600 hover:text-slate-900 transition-colors">
-                Try it now
+              <Link href="/profile" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Profile
+              </Link>
+              <Link href="/login" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Sign In
               </Link>
               <Button asChild>
                 <Link href="https://github.com/edgarcerecerez/ai-fitness-coach" className="flex items-center gap-2">
@@ -207,7 +210,7 @@ export default function HomePage() {
                 Built for Real People, Real Results
               </h2>
               <p className="text-lg text-slate-600 mb-6">
-                Unlike other fitness apps focused on monetization, we're committed to your genuine success. Our AI
+                Unlike other fitness apps focused on monetization, we&apos;re committed to your genuine success. Our AI
                 analyzes your unique patterns and provides actionable insights that fit your lifestyle.
               </p>
               <ul className="space-y-4 mb-8">
