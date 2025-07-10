@@ -121,10 +121,12 @@ export default function ResetPasswordPage() {
         
         // Redirect to login after 3 seconds with proper cleanup and error handling
         timeoutRef.current = setTimeout(() => {
+import { clientLogger, logError } from '@/lib/logger'
+
           try {
             router.push("/login")
           } catch (navigationError) {
-            console.error("Navigation error:", navigationError)
+            logError(navigationError, 'password_reset_navigation')
             setMessage({
               type: "error",
               text: "Navigation failed. Please click 'Go to Login Now' to continue.",
