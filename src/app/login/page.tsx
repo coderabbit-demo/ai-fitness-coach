@@ -15,6 +15,11 @@ import { clientLogger, logError, logAuthEvent } from "@/lib/logger"
 
 type AuthMode = "login" | "signup"
 
+/**
+ * Renders a user authentication page with login, signup, and password reset functionality using Supabase.
+ *
+ * Provides a form for users to sign in or create an account, including client-side validation for email, password, and full name. Handles authentication flows, displays feedback messages, and manages UI state such as loading indicators and password visibility. Supports password reset via email and redirects users to their profile upon successful login.
+ */
 export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>("login")
   const [email, setEmail] = useState("")
