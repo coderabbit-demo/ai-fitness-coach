@@ -146,6 +146,76 @@ describe('Supabase Middleware', () => {
   })
 
   describe('Authentication Failure Cases', () => {
+
+    it("should handle authentication with incomplete user data", async () => {
+      const incompleteUser = {
+        id: "123",
+        email: undefined,
+        user_metadata: null,
+        app_metadata: undefined
+      }
+
+      mockAuth.getUser.mockResolvedValue({ data: { user: incompleteUser }, error: null })
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+      expect(mockAuth.getUser).toHaveBeenCalled()
+    })
+
+    it("should handle authentication timeout scenarios", async () => {
+      mockAuth.getUser.mockImplementation(() => 
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Authentication timeout")), 50)
+        )
+      )
+
+      await expect(middleware(mockRequest as NextRequest)).rejects.toThrow("Authentication timeout")
+    })
+
+    it("should handle corrupted authentication response", async () => {
+      mockAuth.getUser.mockResolvedValue({
+        data: null,
+        error: {
+          message: "Corrupted response data",
+          status: 422,
+          name: "DataCorruptionError"
+        }
+      })
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
+
+    it("should handle authentication with missing required fields", async () => {
+      const malformedUser = {
+        // Missing id field
+        email: "test@example.com"
+      }
+
+      mockAuth.getUser.mockResolvedValue({ data: { user: malformedUser }, error: null })
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
+
+    it("should handle session with missing user reference", async () => {
+      const sessionWithoutUser = {
+        access_token: "valid-token",
+        refresh_token: "valid-refresh",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: null
+      }
+
+      mockAuth.getSession.mockResolvedValue({ data: { session: sessionWithoutUser }, error: null })
+      mockAuth.getUser.mockResolvedValue({ data: { user: null }, error: null })
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
     it('should redirect to login when user is not authenticated', async () => {
       mockAuth.getUser.mockResolvedValue({ data: { user: null }, error: null })
       mockAuth.getSession.mockResolvedValue({ data: { session: null }, error: null })
@@ -225,6 +295,80 @@ describe('Supabase Middleware', () => {
   })
 
   describe('Cookie Management', () => {
+
+    it("should handle cookies with special characters in values", async () => {
+      const specialCookies = [
+        { name: "sb-access-token", value: "token%20with%20spaces" },
+        { name: "sb-refresh-token", value: "token+with+plus" },
+        { name: "sb-session", value: "token&with&ampersand" }
+      ]
+      mockCookies.getAll.mockReturnValue(specialCookies)
+
+      let processedCookies: any[] = []
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies?.getAll) {
+          processedCookies = config.cookies.getAll()
+        }
+        return mockSupabaseClient
+      })
+
+      await middleware(mockRequest as NextRequest)
+
+      expect(processedCookies).toEqual(specialCookies)
+      expect(mockCreateServerClient).toHaveBeenCalled()
+    })
+
+    it("should handle empty cookie values", async () => {
+      const emptyCookies = [
+        { name: "sb-access-token", value: "" },
+        { name: "sb-refresh-token", value: "" }
+      ]
+      mockCookies.getAll.mockReturnValue(emptyCookies)
+
+      await middleware(mockRequest as NextRequest)
+
+      expect(mockCookies.getAll).toHaveBeenCalled()
+      expect(mockCreateServerClient).toHaveBeenCalled()
+    })
+
+    it("should handle cookies with very long names", async () => {
+      const longNameCookie = {
+        name: "sb-" + "a".repeat(4000) + "-token",
+        value: "test-value"
+      }
+      mockCookies.getAll.mockReturnValue([longNameCookie])
+
+      await middleware(mockRequest as NextRequest)
+
+      expect(mockCreateServerClient).toHaveBeenCalled()
+    })
+
+    it("should handle cookie options with all possible configurations", async () => {
+      const comprehensiveCookieOptions = {
+        name: "comprehensive-cookie",
+        value: "test-value",
+        options: {
+          httpOnly: true,
+          secure: true,
+          sameSite: "strict" as const,
+          maxAge: 86400,
+          path: "/",
+          domain: "localhost",
+          expires: new Date(Date.now() + 86400000)
+        }
+      }
+
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies?.setAll) {
+          config.cookies.setAll([comprehensiveCookieOptions])
+        }
+        return mockSupabaseClient
+      })
+
+      await middleware(mockRequest as NextRequest)
+
+      expect(mockCreateServerClient).toHaveBeenCalled()
+    })
     it('should properly handle cookie setting with secure options', async () => {
       let capturedCookieOptions: CookieOptions[] = []
 
@@ -397,6 +541,74 @@ describe('Supabase Middleware', () => {
   })
 
   describe('Edge Cases and Error Handling', () => {
+
+    it("should handle requests with malformed headers", async () => {
+      const malformedHeaders = new Headers()
+      malformedHeaders.set("authorization", "Bearer \x00\x01\x02")
+      malformedHeaders.set("user-agent", "\uFFFD\uFFFE")
+      mockRequest.headers = malformedHeaders
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
+
+    it("should handle requests with extremely long URLs", async () => {
+      const longPath = "/" + "a".repeat(10000)
+      mockRequest.nextUrl = new URL(`http://localhost:3000${longPath}`)
+      mockRequest.url = `http://localhost:3000${longPath}`
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
+
+    it("should handle requests with invalid characters in pathname", async () => {
+      try {
+        mockRequest.nextUrl = {
+          pathname: "/path\with\backslashes",
+          origin: "http://localhost:3000"
+        } as any
+      } catch {
+        // Handle URL parsing errors gracefully
+      }
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
+
+    it("should handle memory pressure scenarios", async () => {
+      // Simulate memory pressure by creating large objects
+      const largeData = new Array(100000).fill("x").join("")
+      mockRequest.headers.set("x-large-header", largeData)
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
+
+    it("should handle requests with circular reference attempts", async () => {
+      const circularObj: any = { self: null }
+      circularObj.self = circularObj
+
+      mockAuth.getUser.mockResolvedValue({
+        data: { user: circularObj },
+        error: null
+      })
+
+      const response = await middleware(mockRequest as NextRequest)
+
+      expect(response).toBeDefined()
+    })
+
+    it("should handle multiple error types simultaneously", async () => {
+      mockAuth.getUser.mockRejectedValue(new Error("Network error"))
+      mockAuth.getSession.mockRejectedValue(new Error("Session error"))
+      mockRequest.cookies = null as any
+
+      await expect(middleware(mockRequest as NextRequest)).rejects.toThrow()
+    })
     it('should handle malformed URLs gracefully', async () => {
       try {
         mockRequest.nextUrl = new URL('http://localhost:3000/path with spaces')
@@ -481,6 +693,121 @@ describe('Supabase Middleware', () => {
   })
 
   describe('Performance and Integration Tests', () => {
+
+    it("should handle stress test with rapid authentication state changes", async () => {
+      let authCallCount = 0
+      mockAuth.getUser.mockImplementation(() => {
+        authCallCount++
+        const isAuthenticated = authCallCount % 2 === 0
+        return Promise.resolve({
+          data: { user: isAuthenticated ? { id: `user-${authCallCount}` } : null },
+          error: null
+        })
+      })
+
+      const rapidRequests = Array.from({ length: 20 }, (_, i) => ({
+        ...mockRequest,
+        nextUrl: new URL(`http://localhost:3000/test-${i}`),
+        url: `http://localhost:3000/test-${i}`
+      }))
+
+      const responses = await Promise.all(
+        rapidRequests.map(req => middleware(req as NextRequest))
+      )
+
+      expect(responses).toHaveLength(20)
+      expect(authCallCount).toBe(20)
+    })
+
+    it("should handle memory cleanup after large session operations", async () => {
+      const initialMemory = process.memoryUsage().heapUsed
+      
+      // Create many sessions with large data
+      for (let i = 0; i < 100; i++) {
+        const largeSession = {
+          access_token: "token-" + "x".repeat(1000),
+          refresh_token: "refresh-" + "x".repeat(1000),
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          user: {
+            id: `user-${i}`,
+            email: `user${i}@example.com`,
+            user_metadata: { data: "x".repeat(1000) }
+          }
+        }
+        
+        mockAuth.getUser.mockResolvedValue({ data: { user: largeSession.user }, error: null })
+        mockAuth.getSession.mockResolvedValue({ data: { session: largeSession }, error: null })
+        
+        await middleware(mockRequest as NextRequest)
+      }
+
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc()
+      }
+
+      const finalMemory = process.memoryUsage().heapUsed
+      const memoryIncrease = finalMemory - initialMemory
+      
+      // Memory increase should be reasonable (less than 50MB)
+      expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024)
+    })
+
+    it("should handle concurrent requests with different authentication states", async () => {
+      const authenticatedRequests = Array.from({ length: 10 }, (_, i) => ({
+        ...mockRequest,
+        nextUrl: new URL(`http://localhost:3000/auth-${i}`),
+        url: `http://localhost:3000/auth-${i}`
+      }))
+      
+      const unauthenticatedRequests = Array.from({ length: 10 }, (_, i) => ({
+        ...mockRequest,
+        nextUrl: new URL(`http://localhost:3000/unauth-${i}`),
+        url: `http://localhost:3000/unauth-${i}`
+      }))
+
+      let callCount = 0
+      mockAuth.getUser.mockImplementation(() => {
+        callCount++
+        const isAuthenticated = callCount <= 10
+        return Promise.resolve({
+          data: { user: isAuthenticated ? { id: `user-${callCount}` } : null },
+          error: null
+        })
+      })
+
+      const allRequests = [...authenticatedRequests, ...unauthenticatedRequests]
+      const responses = await Promise.all(
+        allRequests.map(req => middleware(req as NextRequest))
+      )
+
+      expect(responses).toHaveLength(20)
+      expect(callCount).toBe(20)
+    })
+
+    it("should handle request cancellation scenarios", async () => {
+      const abortController = new AbortController()
+      
+      mockAuth.getUser.mockImplementation(() => 
+        new Promise((resolve) => {
+          const timeout = setTimeout(() => {
+            resolve({ data: { user: { id: "123" } }, error: null })
+          }, 100)
+          
+          abortController.signal.addEventListener("abort", () => {
+            clearTimeout(timeout)
+          })
+        })
+      )
+
+      const requestPromise = middleware(mockRequest as NextRequest)
+      
+      // Cancel the request after 50ms
+      setTimeout(() => abortController.abort(), 50)
+      
+      const response = await requestPromise
+      expect(response).toBeDefined()
+    })
     it('should complete middleware execution within reasonable time', async () => {
       const startTime = Date.now()
       mockAuth.getUser.mockResolvedValue({ data: { user: { id: '123' } }, error: null })
@@ -571,6 +898,250 @@ describe('Supabase Middleware', () => {
   })
 
   describe('updateSession Function Tests', () => {
+
+  describe("Integration and Real-world Scenarios", () => {
+    it("should handle complete authentication flow with token refresh", async () => {
+      const initialToken = "initial-access-token"
+      const refreshedToken = "refreshed-access-token"
+      
+      const initialSession = {
+        access_token: initialToken,
+        refresh_token: "refresh-token",
+        expires_at: Math.floor(Date.now() / 1000) + 60, // Expires in 1 minute
+        user: { id: "123", email: "test@example.com" }
+      }
+      
+      const refreshedSession = {
+        access_token: refreshedToken,
+        refresh_token: "new-refresh-token",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: { id: "123", email: "test@example.com" }
+      }
+      
+      let authCallCount = 0
+      mockAuth.getUser.mockImplementation(() => {
+        authCallCount++
+        if (authCallCount === 1) {
+          return Promise.resolve({ data: { user: initialSession.user }, error: null })
+        } else {
+          return Promise.resolve({ data: { user: refreshedSession.user }, error: null })
+        }
+      })
+      
+      const response = await middleware(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+      expect(authCallCount).toBe(1)
+    })
+    
+    it("should handle user role-based access control", async () => {
+      const adminUser = {
+        id: "admin-123",
+        email: "admin@example.com",
+        user_metadata: { role: "admin" },
+        app_metadata: { roles: ["admin", "user"] }
+      }
+      
+      const regularUser = {
+        id: "user-456",
+        email: "user@example.com",
+        user_metadata: { role: "user" },
+        app_metadata: { roles: ["user"] }
+      }
+      
+      // Test admin access
+      mockAuth.getUser.mockResolvedValue({ data: { user: adminUser }, error: null })
+      mockRequest.nextUrl = new URL("http://localhost:3000/admin/dashboard")
+      
+      let adminResponse = await middleware(mockRequest as NextRequest)
+      expect(adminResponse).toBeDefined()
+      
+      // Test regular user access
+      mockAuth.getUser.mockResolvedValue({ data: { user: regularUser }, error: null })
+      mockRequest.nextUrl = new URL("http://localhost:3000/user/dashboard")
+      
+      let userResponse = await middleware(mockRequest as NextRequest)
+      expect(userResponse).toBeDefined()
+    })
+    
+    it("should handle cross-origin request scenarios", async () => {
+      const crossOriginRequest = {
+        ...mockRequest,
+        nextUrl: new URL("http://localhost:3000/api/data"),
+        headers: new Headers({
+          "Origin": "https://external-site.com",
+          "Referer": "https://external-site.com/page"
+        })
+      }
+      
+      const response = await middleware(crossOriginRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+    
+    it("should handle mobile app authentication scenarios", async () => {
+      const mobileHeaders = new Headers({
+        "User-Agent": "MyApp/1.0 (iOS 15.0; iPhone)",
+        "X-Requested-With": "com.example.myapp",
+        "Accept": "application/json"
+      })
+      
+      mockRequest.headers = mobileHeaders
+      
+      const mobileUser = {
+        id: "mobile-user-123",
+        email: "mobile@example.com",
+        user_metadata: { device_type: "mobile" }
+      }
+      
+      mockAuth.getUser.mockResolvedValue({ data: { user: mobileUser }, error: null })
+      
+      const response = await middleware(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+    
+    it("should handle social login integration", async () => {
+      const socialUser = {
+        id: "social-123",
+        email: "social@example.com",
+        user_metadata: {
+          provider: "google",
+          provider_id: "google-123456",
+          avatar_url: "https://example.com/avatar.jpg"
+        },
+        app_metadata: {
+          provider: "google",
+          providers: ["google"]
+        }
+      }
+      
+      const socialSession = {
+        access_token: "social-access-token",
+        refresh_token: "social-refresh-token",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        user: socialUser,
+        provider_token: "google-provider-token"
+      }
+      
+      mockAuth.getUser.mockResolvedValue({ data: { user: socialUser }, error: null })
+      mockAuth.getSession.mockResolvedValue({ data: { session: socialSession }, error: null })
+      
+      const response = await middleware(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+      expect(mockAuth.getUser).toHaveBeenCalled()
+    })
+  })
+
+    it("should handle cookie synchronization correctly", async () => {
+      const testCookies = [
+        { name: "sb-access-token", value: "access-123" },
+        { name: "sb-refresh-token", value: "refresh-456" },
+        { name: "custom-cookie", value: "custom-value" }
+      ]
+      
+      mockCookies.getAll.mockReturnValue(testCookies)
+      
+      let capturedCookies: any[] = []
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies?.getAll) {
+          capturedCookies = config.cookies.getAll()
+        }
+        return mockSupabaseClient
+      })
+
+      await updateSession(mockRequest as NextRequest)
+
+      expect(capturedCookies).toEqual(testCookies)
+      expect(mockCreateServerClient).toHaveBeenCalled()
+    })
+
+    it("should handle cookie setting with complex options", async () => {
+      const complexCookies = [
+        {
+          name: "sb-complex-token",
+          value: "complex-value",
+          options: {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none" as const,
+            maxAge: 7200,
+            path: "/api",
+            domain: ".example.com"
+          }
+        }
+      ]
+      
+      let setCookiesCalled = false
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies?.setAll) {
+          config.cookies.setAll(complexCookies)
+          setCookiesCalled = true
+        }
+        return mockSupabaseClient
+      })
+
+      await updateSession(mockRequest as NextRequest)
+
+      expect(setCookiesCalled).toBe(true)
+      expect(mockCreateServerClient).toHaveBeenCalled()
+    })
+
+    it("should handle multiple cookie operations in sequence", async () => {
+      const operations = [
+        { name: "cookie1", value: "value1" },
+        { name: "cookie2", value: "value2" },
+        { name: "cookie3", value: "value3" }
+      ]
+      
+      let operationCount = 0
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies?.setAll) {
+          operations.forEach(op => {
+            config.cookies.setAll([op])
+            operationCount++
+          })
+        }
+        return mockSupabaseClient
+      })
+
+      await updateSession(mockRequest as NextRequest)
+
+      expect(operationCount).toBe(3)
+    })
+
+    it("should handle updateSession with invalid environment configuration", async () => {
+      const originalEnv = { ...process.env }
+      
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "invalid-url"
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "invalid-key"
+      
+      mockCreateServerClient.mockImplementation(() => {
+        throw new Error("Invalid configuration")
+      })
+
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow("Invalid configuration")
+      
+      process.env = originalEnv
+    })
+
+    it("should handle updateSession with response modification", async () => {
+      let responseModified = false
+      
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies?.setAll) {
+          config.cookies.setAll([{ name: "test", value: "test" }])
+          responseModified = true
+        }
+        return mockSupabaseClient
+      })
+
+      const result = await updateSession(mockRequest as NextRequest)
+
+      expect(result).toBeDefined()
+      expect(responseModified).toBe(true)
+    })
     it('should update session correctly when called directly', async () => {
       const mockUser = { id: '123', email: 'test@example.com' }
       mockAuth.getUser.mockResolvedValue({ data: { user: mockUser }, error: null })

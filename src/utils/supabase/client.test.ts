@@ -331,3 +331,724 @@ describe('Supabase Client', () => {
     });
   });
 });
+  describe('Logging Functionality', () => {
+    let mockClientLogger: any;
+    let mockLogError: any;
+
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
+      
+      mockClientLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn()
+      };
+      
+      mockLogError = jest.fn();
+      
+      // Mock the logger module
+      jest.doMock('@/lib/logger', () => ({
+        clientLogger: mockClientLogger,
+        logError: mockLogError
+      }));
+    });
+
+    afterEach(() => {
+      jest.dontMock('@/lib/logger');
+    });
+
+    test('should log debug information during client creation', () => {
+      const { createClient } = require('./client');
+      mockCreateBrowserClient.mockReturnValue({} as any);
+
+      createClient();
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith('Creating Supabase client', {
+        hasUrl: true,
+        hasAnonKey: true,
+        urlStartsWith: 'https://test.supabase...',
+        keyStartsWith: 'test-key...',
+        environment: {
+          nodeEnv: process.env.NODE_ENV,
+          isBrowser: typeof window !== 'undefined'
+        }
+      });
+    });
+
+    test('should log successful client creation', () => {
+      const { createClient } = require('./client');
+      mockCreateBrowserClient.mockReturnValue({} as any);
+
+      createClient();
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase client created successfully', {
+        projectUrl: 'https://test.supabase...',
+        timestamp: expect.any(String)
+      });
+    });
+
+    test('should log error when URL is missing', () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const { createClient } = require('./client');
+
+      expect(() => createClient()).toThrow('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+      expect(mockLogError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'supabase_client_creation'
+      );
+    });
+
+    test('should log error when anon key is missing', () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const { createClient } = require('./client');
+
+      expect(() => createClient()).toThrow('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable');
+      expect(mockLogError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'supabase_client_creation'
+      );
+    });
+
+    test('should log environment variables status correctly when missing', () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const { createClient } = require('./client');
+
+      try {
+        createClient();
+      } catch (error) {
+        // Expected to throw
+      }
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith('Creating Supabase client', {
+        hasUrl: false,
+        hasAnonKey: false,
+        urlStartsWith: 'undefined',
+        keyStartsWith: 'undefined',
+        environment: {
+          nodeEnv: process.env.NODE_ENV,
+          isBrowser: typeof window !== 'undefined'
+        }
+      });
+    });
+
+    test('should handle very long URL in logging', () => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://very-long-supabase-url-that-should-be-truncated.supabase.co';
+      const { createClient } = require('./client');
+      mockCreateBrowserClient.mockReturnValue({} as any);
+
+      createClient();
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith('Creating Supabase client', 
+        expect.objectContaining({
+          urlStartsWith: 'https://very-long-s...'
+        })
+      );
+    });
+
+    test('should handle very long anon key in logging', () => {
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'very-long-anon-key-that-should-be-truncated-in-logs';
+      const { createClient } = require('./client');
+      mockCreateBrowserClient.mockReturnValue({} as any);
+
+      createClient();
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith('Creating Supabase client', 
+        expect.objectContaining({
+          keyStartsWith: 'very-long-...'
+        })
+      );
+    });
+  });
+
+  describe('Auth State Change Listeners', () => {
+    let mockClientLogger: any;
+    let mockAuthStateChangeCallback: any;
+
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
+      
+      mockClientLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn()
+      };
+      
+      mockAuthStateChangeCallback = jest.fn();
+      
+      // Mock window object to simulate browser environment
+      Object.defineProperty(window, 'window', {
+        value: global,
+        writable: true
+      });
+      
+      jest.doMock('@/lib/logger', () => ({
+        clientLogger: mockClientLogger,
+        logError: jest.fn()
+      }));
+    });
+
+    afterEach(() => {
+      jest.dontMock('@/lib/logger');
+      delete (global as any).window;
+    });
+
+    test('should register auth state change listener in browser environment', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      expect(mockClient.auth.onAuthStateChange).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    test('should not register auth state change listener in non-browser environment', () => {
+      delete (global as any).window;
+      
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      expect(mockClient.auth.onAuthStateChange).not.toHaveBeenCalled();
+    });
+
+    test('should log SIGNED_IN event correctly', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'test@example.com', app_metadata: { provider: 'email' } },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', {
+        event: 'SIGNED_IN',
+        hasSession: true,
+        userId: 'user-123',
+        userEmail: 'tes***@example.com',
+        expiresAt: mockSession.expires_at,
+        tokenType: 'bearer',
+        isExpired: false,
+        timestamp: expect.any(String)
+      });
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('User signed in successfully', {
+        userId: 'user-123',
+        method: 'email'
+      });
+    });
+
+    test('should log SIGNED_OUT event correctly', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      
+      authCallback('SIGNED_OUT', null);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', {
+        event: 'SIGNED_OUT',
+        hasSession: false,
+        userId: undefined,
+        userEmail: 'unknown',
+        expiresAt: undefined,
+        tokenType: undefined,
+        isExpired: 'unknown',
+        timestamp: expect.any(String)
+      });
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('User signed out');
+    });
+
+    test('should log TOKEN_REFRESHED event correctly', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'test@example.com' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('TOKEN_REFRESHED', mockSession);
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith('Auth token refreshed', {
+        userId: 'user-123'
+      });
+    });
+
+    test('should log USER_UPDATED event correctly', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'test@example.com' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('USER_UPDATED', mockSession);
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith('User data updated', {
+        userId: 'user-123'
+      });
+    });
+
+    test('should log PASSWORD_RECOVERY event correctly', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'test@example.com' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('PASSWORD_RECOVERY', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Password recovery initiated', {
+        userId: 'user-123'
+      });
+    });
+
+    test('should log unknown auth events', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      
+      authCallback('UNKNOWN_EVENT', null);
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith('Unknown auth event', { 
+        event: 'UNKNOWN_EVENT' 
+      });
+    });
+
+    test('should handle session with expired token', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'test@example.com' },
+        expires_at: Date.now() / 1000 - 3600, // Expired 1 hour ago
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', 
+        expect.objectContaining({
+          isExpired: true
+        })
+      );
+    });
+
+    test('should handle session without email', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', 
+        expect.objectContaining({
+          userEmail: 'unknown'
+        })
+      );
+    });
+
+    test('should handle session with different auth providers', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { 
+          id: 'user-123', 
+          email: 'test@example.com', 
+          app_metadata: { provider: 'google' } 
+        },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('User signed in successfully', {
+        userId: 'user-123',
+        method: 'google'
+      });
+    });
+
+    test('should handle session without app_metadata', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'test@example.com' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('User signed in successfully', {
+        userId: 'user-123',
+        method: 'email'
+      });
+    });
+  });
+
+  describe('Browser Environment Detection', () => {
+    test('should detect browser environment correctly', () => {
+      // Simulate browser environment
+      Object.defineProperty(window, 'window', {
+        value: global,
+        writable: true
+      });
+      
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      expect(mockClient.auth.onAuthStateChange).toHaveBeenCalled();
+      
+      delete (global as any).window;
+    });
+
+    test('should detect non-browser environment correctly', () => {
+      // Ensure window is undefined
+      delete (global as any).window;
+      
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      expect(mockClient.auth.onAuthStateChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Email Masking in Logs', () => {
+    let mockClientLogger: any;
+
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
+      
+      mockClientLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn()
+      };
+      
+      Object.defineProperty(window, 'window', {
+        value: global,
+        writable: true
+      });
+      
+      jest.doMock('@/lib/logger', () => ({
+        clientLogger: mockClientLogger,
+        logError: jest.fn()
+      }));
+    });
+
+    afterEach(() => {
+      jest.dontMock('@/lib/logger');
+      delete (global as any).window;
+    });
+
+    test('should mask email addresses in logs correctly', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'testuser@example.com' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', 
+        expect.objectContaining({
+          userEmail: 'tes***@example.com'
+        })
+      );
+    });
+
+    test('should handle short email addresses', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'a@b.co' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', 
+        expect.objectContaining({
+          userEmail: 'a***@b.co'
+        })
+      );
+    });
+
+    test('should handle malformed email addresses', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: 'user-123', email: 'invalid-email' },
+        expires_at: Date.now() / 1000 + 3600,
+        token_type: 'bearer'
+      };
+
+      authCallback('SIGNED_IN', mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', 
+        expect.objectContaining({
+          userEmail: 'unknown'
+        })
+      );
+    });
+  });
+
+  describe('Timestamp Handling', () => {
+    let mockClientLogger: any;
+
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
+      
+      mockClientLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn()
+      };
+      
+      jest.doMock('@/lib/logger', () => ({
+        clientLogger: mockClientLogger,
+        logError: jest.fn()
+      }));
+    });
+
+    afterEach(() => {
+      jest.dontMock('@/lib/logger');
+    });
+
+    test('should include valid ISO timestamp in logs', () => {
+      mockCreateBrowserClient.mockReturnValue({} as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const successCall = mockClientLogger.info.mock.calls.find(
+        call => call[0] === 'Supabase client created successfully'
+      );
+      
+      expect(successCall[1].timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+    });
+
+    test('should include timestamp in auth state change logs', () => {
+      Object.defineProperty(window, 'window', {
+        value: global,
+        writable: true
+      });
+      
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn()
+        }
+      };
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+      
+      const { createClient } = require('./client');
+      createClient();
+
+      const authCallback = mockClient.auth.onAuthStateChange.mock.calls[0][0];
+      authCallback('SIGNED_OUT', null);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith('Supabase auth state changed', 
+        expect.objectContaining({
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
+        })
+      );
+      
+      delete (global as any).window;
+    });
+  });
+
+  describe('Integration with Real Supabase SSR Client', () => {
+    test('should handle createBrowserClient with real-like configuration', () => {
+      const mockClient = {
+        auth: {
+          onAuthStateChange: jest.fn(),
+          getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
+          getUser: jest.fn().mockResolvedValue({ data: { user: null } })
+        },
+        from: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            data: [],
+            error: null
+          })
+        }),
+        storage: {
+          from: jest.fn().mockReturnValue({
+            upload: jest.fn(),
+            download: jest.fn()
+          })
+        }
+      };
+      
+      mockCreateBrowserClient.mockReturnValue(mockClient as any);
+
+      const client = createClient();
+
+      expect(client).toBe(mockClient);
+      expect(createBrowserClient).toHaveBeenCalledWith(
+        'https://test.supabase.co',
+        'test-key'
+      );
+    });
+  });
+});
