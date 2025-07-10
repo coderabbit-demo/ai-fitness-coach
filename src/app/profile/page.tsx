@@ -99,6 +99,13 @@ const WEIGHT_UNIT_OPTIONS = [
   { value: "lb", label: "Pounds (lb)" },
 ] as const
 
+/**
+ * Displays and manages the user's profile page, allowing viewing, editing, and saving of personal, physical, and preference information.
+ *
+ * Fetches the authenticated user's profile data from the backend, supports unit conversions for weight, and provides form controls for updating profile fields. Handles authentication redirects, loading and saving states, and displays success or error messages based on operation outcomes.
+ *
+ * @returns The rendered profile page component.
+ */
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)

@@ -13,6 +13,11 @@ import { Loader2, Lock, Eye, EyeOff, CheckCircle } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
+/**
+ * Renders a password reset page that validates the user's session, enforces password complexity requirements, and allows users to securely update their password.
+ *
+ * If the reset session is invalid or expired, displays an error message and a link to the login page. Upon successful password reset, shows a confirmation message and redirects to login. Handles all user input, validation, feedback, and navigation for the password reset flow.
+ */
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
