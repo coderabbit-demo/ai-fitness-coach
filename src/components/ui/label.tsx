@@ -6,9 +6,9 @@ import * as LabelPrimitive from "@radix-ui/react-label"
 import { cn } from "@/lib/utils"
 
 /**
- * A styled label component that wraps the Radix UI label primitive with additional utility classes for consistent layout and appearance.
+ * Renders a styled label element with consistent layout and appearance, extending the Radix UI label primitive.
  *
- * Accepts all props supported by the Radix `LabelPrimitive.Root` component, allowing for flexible integration and customization.
+ * Supports all props from `LabelPrimitive.Root` and merges additional utility classes for alignment, spacing, and disabled state styling.
  */
 function Label({
   className,
