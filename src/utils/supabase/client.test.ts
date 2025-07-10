@@ -8,6 +8,29 @@ jest.mock('@supabase/ssr', () => ({
 const mockCreateBrowserClient = createBrowserClient as jest.MockedFunction<typeof createBrowserClient>;
 const originalEnv = process.env;
 
+// Additional mocks for comprehensive testing
+jest.mock("@/lib/logger", () => ({
+  clientLogger: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn()
+  },
+  logError: jest.fn()
+}));
+
+import { clientLogger, logError } from "@/lib/logger";
+
+const mockClientLogger = clientLogger as jest.Mocked<typeof clientLogger>;
+const mockLogError = logError as jest.MockedFunction<typeof logError>;
+
+// Mock window object for browser environment tests
+const mockWindow = {
+  location: { href: "https://test.com" },
+  document: {},
+  navigator: { userAgent: "test-agent" }
+};
+
 describe('Supabase Client', () => {
   beforeEach(() => {
     jest.resetAllMocks();
@@ -328,6 +351,261 @@ describe('Supabase Client', () => {
 
       expect(client.storage).toBeDefined();
       expect(typeof client.storage.from).toBe('function');
+    });
+  });
+
+  describe("createClient - Logger Integration", () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-key";
+      mockClientLogger.debug.mockClear();
+      mockClientLogger.info.mockClear();
+      mockLogError.mockClear();
+    });
+
+    test("should log debug information when creating client", () => {
+      mockCreateBrowserClient.mockReturnValue({} as any);
+
+      createClient();
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith("Creating Supabase client", {
+        hasUrl: true,
+        hasAnonKey: true,
+        urlStartsWith: "https://test.supabase...",
+        keyStartsWith: "test-key...",
+        environment: {
+          nodeEnv: process.env.NODE_ENV,
+          isBrowser: typeof window !== "undefined"
+        }
+      });
+    });
+
+    test("should log info when client is created successfully", () => {
+      mockCreateBrowserClient.mockReturnValue({} as any);
+
+      createClient();
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith("Supabase client created successfully", {
+        projectUrl: "https://test.supabase...",
+        timestamp: expect.any(String)
+      });
+    });
+
+    test("should log error and throw when URL is missing", () => {
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-key";
+
+      expect(() => createClient()).toThrow("Missing NEXT_PUBLIC_SUPABASE_URL environment variable");
+      expect(mockLogError).toHaveBeenCalledWith(
+        expect.any(Error),
+        "supabase_client_creation"
+      );
+    });
+
+    test("should log error and throw when anon key is missing", () => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+      delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      expect(() => createClient()).toThrow("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable");
+      expect(mockLogError).toHaveBeenCalledWith(
+        expect.any(Error),
+        "supabase_client_creation"
+      );
+    });
+  });
+
+  describe("createClient - Auth State Change Listeners", () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-key";
+      mockClientLogger.debug.mockClear();
+      mockClientLogger.info.mockClear();
+    });
+
+    test("should register auth state change listener in browser environment", () => {
+      const originalWindow = global.window;
+      global.window = mockWindow as any;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      expect(mockAuth.onAuthStateChange).toHaveBeenCalledWith(expect.any(Function));
+
+      global.window = originalWindow;
+    });
+
+    test("should not register auth state change listener in server environment", () => {
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      expect(mockAuth.onAuthStateChange).not.toHaveBeenCalled();
+
+      global.window = originalWindow;
+    });
+
+    test("should handle SIGNED_IN auth event", () => {
+      const originalWindow = global.window;
+      global.window = mockWindow as any;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      const authStateChangeCallback = mockAuth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { 
+          id: "user123",
+          email: "test@example.com",
+          app_metadata: { provider: "email" }
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        token_type: "bearer"
+      };
+
+      authStateChangeCallback("SIGNED_IN", mockSession);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith("User signed in successfully", {
+        userId: "user123",
+        method: "email"
+      });
+
+      global.window = originalWindow;
+    });
+
+    test("should handle SIGNED_OUT auth event", () => {
+      const originalWindow = global.window;
+      global.window = mockWindow as any;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      const authStateChangeCallback = mockAuth.onAuthStateChange.mock.calls[0][0];
+
+      authStateChangeCallback("SIGNED_OUT", null);
+
+      expect(mockClientLogger.info).toHaveBeenCalledWith("User signed out");
+
+      global.window = originalWindow;
+    });
+
+    test("should handle TOKEN_REFRESHED auth event", () => {
+      const originalWindow = global.window;
+      global.window = mockWindow as any;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      const authStateChangeCallback = mockAuth.onAuthStateChange.mock.calls[0][0];
+      const mockSession = {
+        user: { id: "user123" },
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+        token_type: "bearer"
+      };
+
+      authStateChangeCallback("TOKEN_REFRESHED", mockSession);
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith("Auth token refreshed", {
+        userId: "user123"
+      });
+
+      global.window = originalWindow;
+    });
+
+    test("should handle unknown auth events", () => {
+      const originalWindow = global.window;
+      global.window = mockWindow as any;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      const authStateChangeCallback = mockAuth.onAuthStateChange.mock.calls[0][0];
+
+      authStateChangeCallback("UNKNOWN_EVENT", null);
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith("Unknown auth event", {
+        event: "UNKNOWN_EVENT"
+      });
+
+      global.window = originalWindow;
+    });
+  });
+
+  describe("createClient - Browser Environment Detection", () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-key";
+      mockClientLogger.debug.mockClear();
+      mockClientLogger.info.mockClear();
+    });
+
+    test("should detect browser environment correctly when window is defined", () => {
+      const originalWindow = global.window;
+      global.window = mockWindow as any;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith("Creating Supabase client", 
+        expect.objectContaining({
+          environment: expect.objectContaining({
+            isBrowser: true
+          })
+        })
+      );
+
+      global.window = originalWindow;
+    });
+
+    test("should detect server environment correctly when window is undefined", () => {
+      const originalWindow = global.window;
+      delete (global as any).window;
+
+      const mockAuth = {
+        onAuthStateChange: jest.fn()
+      };
+      mockCreateBrowserClient.mockReturnValue({ auth: mockAuth } as any);
+
+      createClient();
+
+      expect(mockClientLogger.debug).toHaveBeenCalledWith("Creating Supabase client", 
+        expect.objectContaining({
+          environment: expect.objectContaining({
+            isBrowser: false
+          })
+        })
+      );
+
+      global.window = originalWindow;
     });
   });
 });

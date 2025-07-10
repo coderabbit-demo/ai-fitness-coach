@@ -590,3 +590,502 @@ describe('Supabase Middleware', () => {
     })
   })
 })
+  describe('Cookie setAll Function Edge Cases', () => {
+    it('should handle setAll with empty cookie array', async () => {
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies && config.cookies.setAll) {
+          config.cookies.setAll([])
+        }
+        return mockSupabaseClient
+      })
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+      expect(mockCreateServerClient).toHaveBeenCalled()
+    })
+
+    it('should handle setAll with multiple cookies having same name', async () => {
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies && config.cookies.setAll) {
+          config.cookies.setAll([
+            { name: 'duplicate-cookie', value: 'value1' },
+            { name: 'duplicate-cookie', value: 'value2' }
+          ])
+        }
+        return mockSupabaseClient
+      })
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+
+    it('should handle setAll with cookies containing null/undefined values', async () => {
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies && config.cookies.setAll) {
+          config.cookies.setAll([
+            { name: 'null-cookie', value: null as any },
+            { name: 'undefined-cookie', value: undefined as any },
+            { name: 'empty-cookie', value: '' }
+          ])
+        }
+        return mockSupabaseClient
+      })
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+
+    it('should handle setAll with cookies having complex option objects', async () => {
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies && config.cookies.setAll) {
+          config.cookies.setAll([
+            {
+              name: 'complex-cookie',
+              value: 'complex-value',
+              options: {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict' as const,
+                maxAge: 86400,
+                domain: '.example.com',
+                path: '/app',
+                priority: 'high' as any
+              }
+            }
+          ])
+        }
+        return mockSupabaseClient
+      })
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+
+    it('should handle setAll throwing errors gracefully', async () => {
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies && config.cookies.setAll) {
+          config.cookies.setAll = vi.fn().mockImplementation(() => {
+            throw new Error('Cookie setting failed')
+          })
+        }
+        return mockSupabaseClient
+      })
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+    })
+  })
+
+  describe('Cookie getAll Function Edge Cases', () => {
+    it('should handle getAll returning malformed cookie objects', async () => {
+      const malformedCookies = [
+        { name: 'valid-cookie', value: 'valid-value' },
+        { name: null, value: 'no-name' } as any,
+        { name: 'no-value', value: null } as any,
+        { wrongProperty: 'wrong-structure' } as any,
+        null as any,
+        undefined as any
+      ]
+      
+      mockCookies.getAll.mockReturnValue(malformedCookies)
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+      expect(mockCookies.getAll).toHaveBeenCalled()
+    })
+
+    it('should handle getAll returning extremely large cookie arrays', async () => {
+      const largeCookieArray = Array.from({ length: 1000 }, (_, i) => ({
+        name: `cookie-${i}`,
+        value: `value-${i}`.repeat(100)
+      }))
+      
+      mockCookies.getAll.mockReturnValue(largeCookieArray)
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+
+    it('should handle getAll throwing errors', async () => {
+      mockCookies.getAll.mockImplementation(() => {
+        throw new Error('Failed to get cookies')
+      })
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+    })
+
+    it('should handle getAll returning non-array values', async () => {
+      const nonArrayValues = [
+        null,
+        undefined,
+        'string-instead-of-array',
+        123,
+        { not: 'an-array' },
+        true
+      ]
+      
+      for (const value of nonArrayValues) {
+        mockCookies.getAll.mockReturnValue(value as any)
+        
+        await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+      }
+    })
+  })
+
+  describe('NextResponse Integration Tests', () => {
+    it('should preserve request headers in NextResponse', async () => {
+      const originalHeaders = new Headers({
+        'x-custom-header': 'custom-value',
+        'authorization': 'Bearer token',
+        'user-agent': 'test-agent'
+      })
+      
+      mockRequest.headers = originalHeaders
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+      expect(response.headers).toBeDefined()
+    })
+
+    it('should handle NextResponse.next() failures', async () => {
+      const originalNext = NextResponse.next
+      NextResponse.next = vi.fn().mockImplementation(() => {
+        throw new Error('NextResponse.next failed')
+      })
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+      
+      NextResponse.next = originalNext
+    })
+
+    it('should handle multiple NextResponse creation calls', async () => {
+      let responseCreationCount = 0
+      const originalNext = NextResponse.next
+      
+      NextResponse.next = vi.fn().mockImplementation((options) => {
+        responseCreationCount++
+        return originalNext(options)
+      })
+      
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies && config.cookies.setAll) {
+          config.cookies.setAll([
+            { name: 'cookie1', value: 'value1' },
+            { name: 'cookie2', value: 'value2' }
+          ])
+        }
+        return mockSupabaseClient
+      })
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+      expect(responseCreationCount).toBeGreaterThan(1)
+      
+      NextResponse.next = originalNext
+    })
+  })
+
+  describe('Supabase Client Creation Edge Cases', () => {
+    it('should handle createServerClient with invalid URL format', async () => {
+      const originalEnv = process.env.NEXT_PUBLIC_SUPABASE_URL
+      process.env.NEXT_PUBLIC_SUPABASE_URL = 'invalid-url-format'
+      
+      mockCreateServerClient.mockImplementation(() => {
+        throw new Error('Invalid URL format')
+      })
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+      
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalEnv
+    })
+
+    it('should handle createServerClient with empty environment variables', async () => {
+      const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const originalKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      process.env.NEXT_PUBLIC_SUPABASE_URL = ''
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = ''
+      
+      mockCreateServerClient.mockImplementation(() => {
+        throw new Error('Empty environment variables')
+      })
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+      
+      process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalKey
+    })
+
+    it('should handle createServerClient returning null/undefined', async () => {
+      mockCreateServerClient.mockReturnValue(null as any)
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+    })
+
+    it('should handle createServerClient with malformed configuration', async () => {
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies) {
+          // Simulate malformed cookie config
+          config.cookies.getAll = 'not-a-function' as any
+        }
+        return mockSupabaseClient
+      })
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+    })
+  })
+
+  describe('Authentication Error Handling', () => {
+    it('should handle auth.getUser with various error types', async () => {
+      const errorScenarios = [
+        new Error('Network error'),
+        new TypeError('Type error'),
+        new ReferenceError('Reference error'),
+        { message: 'Custom error object' },
+        'String error',
+        null,
+        undefined
+      ]
+      
+      for (const error of errorScenarios) {
+        mockAuth.getUser.mockRejectedValue(error)
+        
+        await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+      }
+    })
+
+    it('should handle auth.getUser with timeout scenarios', async () => {
+      mockAuth.getUser.mockImplementation(() => 
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 100)
+        )
+      )
+      
+      await expect(updateSession(mockRequest as NextRequest)).rejects.toThrow()
+    })
+
+    it('should handle auth.getUser returning malformed responses', async () => {
+      const malformedResponses = [
+        null,
+        undefined,
+        'string-response',
+        123,
+        [],
+        { wrongStructure: true }
+      ]
+      
+      for (const response of malformedResponses) {
+        mockAuth.getUser.mockResolvedValue(response as any)
+        
+        const result = await updateSession(mockRequest as NextRequest)
+        expect(result).toBeDefined()
+      }
+    })
+  })
+
+  describe('Request Object Validation', () => {
+    it('should handle request with missing cookies property', async () => {
+      const requestWithoutCookies = {
+        ...mockRequest,
+        cookies: undefined
+      } as any
+      
+      await expect(updateSession(requestWithoutCookies)).rejects.toThrow()
+    })
+
+    it('should handle request with cookies having missing methods', async () => {
+      const requestWithIncompleteCookies = {
+        ...mockRequest,
+        cookies: {
+          getAll: undefined,
+          set: undefined
+        }
+      } as any
+      
+      await expect(updateSession(requestWithIncompleteCookies)).rejects.toThrow()
+    })
+
+    it('should handle request with cookies.set throwing errors', async () => {
+      const requestWithFailingCookies = {
+        ...mockRequest,
+        cookies: {
+          getAll: vi.fn().mockReturnValue([]),
+          set: vi.fn().mockImplementation(() => {
+            throw new Error('Cookie set failed')
+          })
+        }
+      } as any
+      
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        if (config.cookies && config.cookies.setAll) {
+          config.cookies.setAll([{ name: 'test', value: 'value' }])
+        }
+        return mockSupabaseClient
+      })
+      
+      await expect(updateSession(requestWithFailingCookies)).rejects.toThrow()
+    })
+  })
+
+  describe('Performance and Load Testing', () => {
+    it('should handle rapid successive updateSession calls', async () => {
+      const startTime = Date.now()
+      const promises = Array.from({ length: 100 }, () => 
+        updateSession(mockRequest as NextRequest)
+      )
+      
+      const results = await Promise.all(promises)
+      const endTime = Date.now()
+      
+      expect(results).toHaveLength(100)
+      expect(endTime - startTime).toBeLessThan(5000)
+      results.forEach(result => expect(result).toBeDefined())
+    })
+
+    it('should handle concurrent updateSession calls with different requests', async () => {
+      const requests = Array.from({ length: 20 }, (_, i) => ({
+        ...mockRequest,
+        url: `http://localhost:3000/path-${i}`,
+        cookies: {
+          getAll: vi.fn().mockReturnValue([
+            { name: `cookie-${i}`, value: `value-${i}` }
+          ]),
+          set: vi.fn()
+        }
+      }))
+      
+      const results = await Promise.all(
+        requests.map(req => updateSession(req as NextRequest))
+      )
+      
+      expect(results).toHaveLength(20)
+      results.forEach(result => expect(result).toBeDefined())
+    })
+
+    it('should handle stress testing with large cookie payloads', async () => {
+      const largeCookiePayload = Array.from({ length: 100 }, (_, i) => ({
+        name: `large-cookie-${i}`,
+        value: 'x'.repeat(1000)
+      }))
+      
+      mockCookies.getAll.mockReturnValue(largeCookiePayload)
+      
+      const response = await updateSession(mockRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+  })
+
+  describe('Memory Management and Cleanup', () => {
+    it('should not create memory leaks with repeated calls', async () => {
+      const initialMemory = process.memoryUsage().heapUsed
+      
+      for (let i = 0; i < 200; i++) {
+        await updateSession(mockRequest as NextRequest)
+      }
+      
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc()
+      }
+      
+      const finalMemory = process.memoryUsage().heapUsed
+      const memoryIncrease = finalMemory - initialMemory
+      
+      // Allow for reasonable memory increase (less than 100MB)
+      expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024)
+    })
+
+    it('should handle cleanup of Supabase client instances', async () => {
+      const clientInstances: any[] = []
+      
+      mockCreateServerClient.mockImplementation((url, key, config) => {
+        const client = { ...mockSupabaseClient, _instanceId: Date.now() }
+        clientInstances.push(client)
+        return client
+      })
+      
+      for (let i = 0; i < 10; i++) {
+        await updateSession(mockRequest as NextRequest)
+      }
+      
+      expect(clientInstances.length).toBe(10)
+    })
+  })
+
+  describe('Edge Case Scenarios', () => {
+    it('should handle frozen request objects', async () => {
+      const frozenRequest = Object.freeze({
+        ...mockRequest,
+        cookies: Object.freeze({
+          getAll: vi.fn().mockReturnValue([]),
+          set: vi.fn()
+        })
+      })
+      
+      const response = await updateSession(frozenRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+
+    it('should handle circular reference in request objects', async () => {
+      const circularRequest = { ...mockRequest }
+      circularRequest.self = circularRequest
+      
+      const response = await updateSession(circularRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+
+    it('should handle request with prototype pollution attempts', async () => {
+      const maliciousRequest = {
+        ...mockRequest,
+        '__proto__': { malicious: 'payload' },
+        'constructor': { prototype: { evil: 'code' } }
+      }
+      
+      const response = await updateSession(maliciousRequest as NextRequest)
+      
+      expect(response).toBeDefined()
+    })
+  })
+
+  describe('Integration with Next.js Edge Cases', () => {
+    it('should handle middleware in different Next.js runtime environments', async () => {
+      const originalRuntime = process.env.NEXT_RUNTIME
+      
+      const runtimes = ['nodejs', 'edge', undefined]
+      
+      for (const runtime of runtimes) {
+        process.env.NEXT_RUNTIME = runtime
+        
+        const response = await updateSession(mockRequest as NextRequest)
+        expect(response).toBeDefined()
+      }
+      
+      process.env.NEXT_RUNTIME = originalRuntime
+    })
+
+    it('should handle different Next.js versions compatibility', async () => {
+      const originalVersion = process.env.NEXT_VERSION
+      
+      const versions = ['13.0.0', '14.0.0', '15.0.0']
+      
+      for (const version of versions) {
+        process.env.NEXT_VERSION = version
+        
+        const response = await updateSession(mockRequest as NextRequest)
+        expect(response).toBeDefined()
+      }
+      
+      process.env.NEXT_VERSION = originalVersion
+    })
+  })
+})
