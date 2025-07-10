@@ -211,28 +211,32 @@ describe('Label Component', () => {
   describe('Edge Cases', () => {
     it('handles empty children gracefully', () => {
       render(<Label></Label>)
-      const label = screen.getByRole('label')
+-      const label = screen.getByRole('label')
++      const label = document.querySelector('label')
       expect(label).toBeInTheDocument()
       expect(label.textContent).toBe('')
     })
 
     it('handles null children', () => {
       render(<Label>{null}</Label>)
-      const label = screen.getByRole('label')
+-      const label = screen.getByRole('label')
++      const label = document.querySelector('label')
       expect(label).toBeInTheDocument()
       expect(label.textContent).toBe('')
     })
 
     it('handles undefined children', () => {
       render(<Label>{undefined}</Label>)
-      const label = screen.getByRole('label')
+-      const label = screen.getByRole('label')
++      const label = document.querySelector('label')
       expect(label).toBeInTheDocument()
       expect(label.textContent).toBe('')
     })
 
     it('handles boolean children', () => {
       render(<Label>{true}</Label>)
-      const label = screen.getByRole('label')
+-      const label = screen.getByRole('label')
++      const label = document.querySelector('label')
       expect(label).toBeInTheDocument()
       expect(label.textContent).toBe('')
     })
