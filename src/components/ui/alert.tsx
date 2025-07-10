@@ -20,9 +20,9 @@ const alertVariants = cva(
 )
 
 /**
- * Renders a styled alert container with support for visual variants.
+ * Renders an alert container with configurable visual variants.
  *
- * Combines base alert styles with optional variant-based styling and additional class names. All standard `div` props are supported.
+ * Supports standard `div` props and applies variant-based styling for different alert types.
  */
 function Alert({
   className,
@@ -40,9 +40,9 @@ function Alert({
 }
 
 /**
- * Renders the title section of an alert with predefined styling.
+ * Displays the alert title with styling for prominence and single-line truncation.
  *
- * Accepts all standard `div` props and applies styles for grid positioning, text truncation, minimum height, font weight, and letter spacing.
+ * Accepts all standard `div` props and applies styles for grid positioning, font weight, and letter spacing.
  */
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -58,9 +58,9 @@ function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 /**
- * Renders the description section of an alert with muted styling and layout.
+ * Displays the alert's description with muted text and relaxed spacing.
  *
- * Accepts all standard `div` props and applies styles for secondary text, grid positioning, and relaxed paragraph spacing.
+ * Accepts all standard `div` props and applies styling for secondary text and layout within the alert component.
  */
 function AlertDescription({
   className,

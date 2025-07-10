@@ -3,9 +3,9 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Renders a customizable input element with predefined styling and full support for standard input props.
+ * Renders a styled HTML input element with full support for standard input attributes and custom class names.
  *
- * Combines a set of utility CSS classes for consistent appearance, accessibility, and state handling, while allowing additional customization through the `className` prop and other input attributes.
+ * Applies consistent utility-based styling for appearance, accessibility, and state feedback, while allowing further customization through the `className` prop and additional input attributes.
  *
  * @returns The rendered input element.
  */
