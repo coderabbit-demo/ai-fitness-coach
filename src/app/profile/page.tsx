@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, User, Save, ArrowLeft, Target, Activity, Heart, AlertCircle, Scale } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { logError } from "@/lib/logger"
 import { 
   type WeightUnit, 
   convertFromKg, 
@@ -139,7 +140,7 @@ export default function ProfilePage() {
         .single()
 
       if (error) {
-        console.error('Error fetching profile:', error)
+        logError(error, 'Error fetching profile')
         setMessage({ type: "error", text: "Failed to load profile data" })
       } else {
         setProfile(data)
@@ -167,7 +168,7 @@ export default function ProfilePage() {
         })
       }
     } catch (error) {
-      console.error('Error:', error)
+      logError(error, 'Error fetching profile')
       setMessage({ type: "error", text: "An unexpected error occurred" })
     } finally {
       setLoading(false)
@@ -227,7 +228,7 @@ export default function ProfilePage() {
         .eq('id', user.id)
 
       if (error) {
-        console.error('Error updating profile:', error)
+        logError(error, 'Error updating profile')
         setMessage({ type: "error", text: "Failed to update profile" })
       } else {
         setMessage({ type: "success", text: "Profile updated successfully!" })
@@ -235,7 +236,7 @@ export default function ProfilePage() {
         await fetchProfile() // Refresh the data
       }
     } catch (error) {
-      console.error('Error:', error)
+      logError(error, 'Error updating profile')
       setMessage({ type: "error", text: "An unexpected error occurred" })
     } finally {
       setSaving(false)
