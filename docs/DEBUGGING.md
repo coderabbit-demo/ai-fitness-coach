@@ -1,4 +1,92 @@
-# Debugging Guide for AI Fitness Coach
+# AI Fitness Coach - Debugging Guide
+
+## API Key Management & Graceful Degradation
+
+### Overview
+The application is designed to build and run successfully even when AI API keys are missing. This allows for public deployments and development environments without requiring expensive API keys.
+
+### How It Works
+
+**🔄 Lazy Initialization Pattern:**
+- AI clients (OpenAI, Google Vision) are only initialized when environment variables are present
+- Missing API keys are logged as warnings, not errors
+- The build process continues successfully regardless of missing keys
+
+**🎯 Fallback Strategy:**
+- **Primary**: OpenAI Vision API (for food image analysis)
+- **Fallback**: Google Cloud Vision API
+- **Graceful Failure**: Clear error messages when both are unavailable
+
+**📝 Developer Logging:**
+```bash
+# Successful initialization
+INFO: OpenAI client initialized successfully
+INFO: Google Vision client initialized successfully
+
+# Missing API keys (warnings, not errors)
+WARN: OPENAI_API_KEY environment variable is missing - OpenAI functionality will be disabled
+WARN: Google Vision client not initialized - missing environment variables: GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_CLOUD_PROJECT_ID
+```
+
+### Setting Up API Keys (Optional)
+
+**For Local Development:**
+1. Copy `env.example` to `.env.local`
+2. Add your API keys:
+```bash
+# Required only if you want AI nutrition analysis
+OPENAI_API_KEY=sk-your-key-here
+
+# Optional - fallback for nutrition analysis
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
+GOOGLE_CLOUD_PROJECT_ID=your-project-id
+```
+
+**For Production/Vercel:**
+1. Add environment variables in your deployment platform
+2. The app will automatically detect and use available services
+
+### Testing Without API Keys
+
+**Build Test:**
+```bash
+# This should succeed even without API keys
+npm run build
+```
+
+**Runtime Behavior:**
+- ✅ App loads and functions normally
+- ✅ Non-AI features work completely
+- ⚠️ AI nutrition analysis will show appropriate error messages
+- 📊 All other features (auth, manual logging, etc.) work normally
+
+### Best Practices for Public Apps
+
+1. **Never commit API keys** to version control
+2. **Design for graceful degradation** - core features should work without AI
+3. **Provide clear user feedback** when AI features are unavailable
+4. **Use environment-specific configurations** for different deployment stages
+5. **Monitor logs** to understand which services are available in each environment
+
+### Troubleshooting
+
+**Build Fails with "OPENAI_API_KEY missing":**
+- ✅ **Fixed!** - The app now handles this gracefully
+- Check that you're using the latest code with lazy initialization
+
+**AI Features Not Working:**
+1. Check logs for initialization status
+2. Verify environment variables are set correctly  
+3. Ensure API keys have proper permissions
+4. Test with one provider at a time to isolate issues
+
+**Example Error Handling:**
+```typescript
+// The app will show users clear messages like:
+"AI nutrition analysis is temporarily unavailable. Please enter your meal details manually."
+```
+
+This approach ensures your app is production-ready and user-friendly, even when AI services are unavailable.
 
 ## Authentication Issues Debugging
 
@@ -136,37 +224,4 @@ When debugging authentication issues, check these items in order:
 
 ### Reading Log Files
 
-When running in development, log files are created in the `logs/` directory:
-
-```bash
-# View the latest error log
-tail -f logs/error-$(date +%Y-%m-%d).log
-
-# View the latest combined log
-tail -f logs/combined-$(date +%Y-%m-%d).log
-
-# Search for specific errors
-grep -i "signup" logs/combined-$(date +%Y-%m-%d).log
-
-# View authentication events
-grep "Auth event" logs/combined-$(date +%Y-%m-%d).log
-```
-
-### Performance Considerations
-
-The logging system is designed to be:
-- **Non-blocking**: Logs don't affect application performance
-- **Privacy-conscious**: Email addresses and sensitive data are masked
-- **Environment-aware**: Debug logs are disabled in production
-- **File rotation**: Log files are automatically rotated to prevent disk space issues
-
-### Getting Help
-
-If you're still experiencing issues after checking the logs:
-
-1. Copy the relevant log entries from the time when the issue occurred
-2. Include your environment configuration (without sensitive values)
-3. Describe the exact steps you took when the issue occurred
-4. Note any error messages displayed to the user
-
-The comprehensive logging should help identify exactly where in the authentication flow the issue is occurring. 
+When running in development, log files are created in the `logs/`
