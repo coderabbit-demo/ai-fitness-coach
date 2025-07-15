@@ -1,11 +1,39 @@
 import OpenAI from 'openai';
 import logger from '@/lib/logger';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  maxRetries: 3,
-  timeout: 60000, // 60 seconds
-});
+// Validate required environment variables
+const apiKey = process.env.OPENAI_API_KEY;
+
+// Only initialize if environment variable is available (not during build)
+let openai: OpenAI | null = null;
+
+if (apiKey) {
+  openai = new OpenAI({
+    apiKey: apiKey,
+    maxRetries: 3,
+    timeout: 60000, // 60 seconds
+  });
+  logger.info('OpenAI client initialized successfully');
+} else {
+  logger.warn('OPENAI_API_KEY environment variable is missing - OpenAI functionality will be disabled');
+}
+
+// Log initialization status for debugging
+if (process.env.NODE_ENV !== 'production') {
+  logger.info('OpenAI client initialization status:', { 
+    initialized: !!openai, 
+    hasApiKey: !!apiKey 
+  });
+}
+
+// Helper function to get the OpenAI client with proper error handling
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    logger.error('Attempted to use OpenAI client but it is not initialized - OPENAI_API_KEY environment variable is required');
+    throw new Error('OPENAI_API_KEY environment variable is required');
+  }
+  return openai;
+}
 
 export interface NutritionAnalysis {
   foodItems: Array<{
@@ -36,7 +64,8 @@ export interface NutritionAnalysis {
  */
 export async function analyzeImageWithOpenAI(imageBase64: string): Promise<NutritionAnalysis> {
   try {
-    const response = await openai.chat.completions.create({
+    const client = getOpenAIClient();
+    const response = await client.chat.completions.create({
       model: "gpt-4-vision-preview",
       messages: [
         {
