@@ -18,6 +18,13 @@ interface ImagePreviewProps {
   className?: string
 }
 
+/**
+ * Displays a preview of an image file with interactive controls for rotation, retake, cancel, and upload actions.
+ *
+ * Shows the image with optional rotation, file size, and any validation warnings. Provides buttons for retaking the image, rotating it, canceling the operation, and confirming the upload. During upload, overlays a progress indicator and disables the upload button.
+ *
+ * @returns The rendered image preview component.
+ */
 export default function ImagePreview({
   imageUrl,
   file,

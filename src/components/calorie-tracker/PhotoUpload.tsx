@@ -22,6 +22,14 @@ interface PhotoUploadProps {
   className?: string
 }
 
+/**
+ * React component that manages the workflow for uploading a meal photo and entering nutrition data.
+ *
+ * Guides users through capturing or uploading a photo, previewing and confirming the image, uploading it with progress feedback, and submitting nutrition information. Handles user authentication, image validation, processing, and error states throughout the process.
+ *
+ * @param className - Optional CSS class for custom styling
+ * @returns The rendered photo upload and nutrition entry UI
+ */
 export default function PhotoUpload({ className }: PhotoUploadProps) {
   const [currentView, setCurrentView] = useState<ViewState>('initial')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)

@@ -14,6 +14,16 @@ interface CameraCaptureProps {
   className?: string
 }
 
+/**
+ * React component that provides a user interface for capturing images from the device camera.
+ *
+ * Displays a live camera feed, allows toggling between front and rear cameras, and enables users to capture an image as a JPEG blob. Handles camera permission requests, initialization, and error states. Invokes the provided callback with the captured image or when the user cancels the operation.
+ *
+ * @param onCapture - Callback invoked with the captured image blob when a photo is taken
+ * @param onCancel - Callback invoked when the user cancels the capture process
+ * @param className - Optional CSS class for custom styling
+ * @returns The rendered camera capture UI component
+ */
 export default function CameraCapture({ onCapture, onCancel, className }: CameraCaptureProps) {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [error, setError] = useState<CameraError | null>(null)
