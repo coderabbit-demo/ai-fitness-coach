@@ -87,14 +87,19 @@ export async function POST(request: NextRequest) {
       .eq('id', logData.id);
 
     // Trigger AI analysis
-    await inngest.send({
-      name: 'food/image.uploaded',
-      data: {
-        imageUrl: signedUrlData.signedUrl,
-        userId: user.id,
-        logId: logData.id,
-      },
-    });
+    if (inngest) {
+      await inngest.send({
+        name: 'food/image.uploaded',
+        data: {
+          imageUrl: signedUrlData.signedUrl,
+          userId: user.id,
+          logId: logData.id,
+        },
+      });
+      logger.info('AI analysis triggered for nutrition log', { logId: logData.id });
+    } else {
+      logger.error('Cannot trigger AI analysis - Inngest client not available (missing INNGEST_EVENT_KEY)', { logId: logData.id });
+    }
 
     logger.info('Image uploaded and processing started', {
       userId: user.id,

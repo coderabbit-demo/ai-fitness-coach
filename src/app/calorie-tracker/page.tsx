@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CheckCircle } from 'lucide-react'
 
 interface CalorieTrackerPageProps {
-  searchParams: { success?: string }
+  searchParams: Promise<{ success?: string }>
 }
 
 /**
@@ -26,7 +26,8 @@ export default async function CalorieTrackerPage({ searchParams }: CalorieTracke
     redirect('/login')
   }
 
-  const showSuccessMessage = searchParams.success === 'true'
+  const resolvedSearchParams = await searchParams
+  const showSuccessMessage = resolvedSearchParams.success === 'true'
 
   return (
     <div className="container mx-auto px-4 py-8">

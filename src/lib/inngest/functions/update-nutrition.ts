@@ -2,7 +2,7 @@ import { inngest } from '@/lib/inngest/client';
 import { createClient } from '@/utils/supabase/server';
 import logger from '@/lib/logger';
 
-export const updateNutritionData = inngest.createFunction(
+export const updateNutritionData = inngest!.createFunction(
   { id: 'update-nutrition-data' },
   { event: 'nutrition/analysis.completed' },
   async ({ event, step }) => {

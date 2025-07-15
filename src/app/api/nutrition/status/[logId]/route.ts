@@ -8,11 +8,11 @@ import { createClient } from '@/utils/supabase/server';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { logId: string } }
+  { params }: { params: Promise<{ logId: string }> }
 ) {
   try {
     // Validate logId parameter
-    const { logId } = params;
+    const { logId } = await params;
     if (!logId || typeof logId !== 'string') {
       return NextResponse.json({ error: 'Invalid logId parameter' }, { status: 400 });
     }

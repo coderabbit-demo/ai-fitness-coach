@@ -68,7 +68,7 @@ export default function CameraCapture({ onCapture, onCancel, className }: Camera
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
       }
-    } catch (err) {
+    } catch {
       setError({
         type: 'unknown',
         message: 'Failed to initialize camera'
