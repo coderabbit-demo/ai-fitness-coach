@@ -1,0 +1,67 @@
+import { ImageAnnotatorClient } from '@google-cloud/vision';
+import logger from '@/lib/logger';
+import { NutritionAnalysis } from './openai-vision';
+
+const client = new ImageAnnotatorClient({
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+});
+
+export async function analyzeImageWithGoogle(imageBase64: string): Promise<NutritionAnalysis> {
+  try {
+    if (!client.objectLocalization) {
+      throw new Error('Google Vision client not properly initialized');
+    }
+    
+    const [result] = await client.objectLocalization({
+      image: {
+        content: imageBase64,
+      },
+    });
+
+    const objects = result.localizedObjectAnnotations || [];
+    const foodObjects = objects.filter(obj => 
+      obj.name?.toLowerCase().includes('food') || 
+      obj.name?.toLowerCase().includes('fruit') ||
+      obj.name?.toLowerCase().includes('vegetable')
+    );
+
+    // Use detected objects to create nutrition analysis
+    // This would require a food database lookup or additional AI processing
+    const analysis = await processFoodObjects(foodObjects, imageBase64);
+    
+    logger.info('Google Vision analysis completed', {
+      objectsDetected: objects.length,
+      foodObjectsDetected: foodObjects.length,
+      totalCalories: analysis.totalCalories
+    });
+
+    return analysis;
+  } catch (error) {
+    logger.error('Google Vision analysis failed', { error });
+    throw error;
+  }
+}
+
+async function processFoodObjects(objects: any[], imageBase64: string): Promise<NutritionAnalysis> {
+  // Fallback implementation - would need food database or additional processing
+  // For now, return a default structure
+  return {
+    foodItems: objects.map(obj => ({
+      name: obj.name || 'Unknown food',
+      quantity: 'Medium portion',
+      calories: 200, // Default estimate
+      protein_g: 10,
+      carbs_g: 25,
+      fat_g: 8,
+      fiber_g: 3,
+    })),
+    totalCalories: objects.length * 200,
+    totalProtein: objects.length * 10,
+    totalCarbs: objects.length * 25,
+    totalFat: objects.length * 8,
+    totalFiber: objects.length * 3,
+    confidenceScore: 0.6, // Lower confidence for Google fallback
+    analysisNotes: 'Analysis based on object detection. Manual verification recommended.',
+  };
+} 

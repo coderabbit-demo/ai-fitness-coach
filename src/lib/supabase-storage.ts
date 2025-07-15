@@ -1,0 +1,98 @@
+import { createClient } from '@/utils/supabase/client'
+import { createClient as createServerClient } from '@/utils/supabase/server'
+
+export interface UploadResult {
+  success: boolean
+  url?: string
+  error?: string
+  path?: string
+}
+
+export interface UploadProgress {
+  progress: number
+  stage: 'compressing' | 'uploading' | 'complete'
+}
+
+export class SupabaseStorageClient {
+  private supabase = createClient()
+
+  async uploadMealImage(
+    file: File,
+    userId: string,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<UploadResult> {
+    try {
+      // Generate unique filename
+      const timestamp = Date.now()
+      const fileExtension = file.name.split('.').pop()
+      const fileName = `${userId}/${timestamp}.${fileExtension}`
+
+      onProgress?.({ progress: 0, stage: 'compressing' })
+
+      // Upload to Supabase Storage
+      const { data, error } = await this.supabase.storage
+        .from('meal-images')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      onProgress?.({ progress: 100, stage: 'complete' })
+
+      // Get public URL
+      const { data: { publicUrl } } = this.supabase.storage
+        .from('meal-images')
+        .getPublicUrl(data.path)
+
+      return { 
+        success: true, 
+        url: publicUrl,
+        path: data.path
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Upload failed'
+      }
+    }
+  }
+
+  async deleteMealImage(path: string): Promise<boolean> {
+    try {
+      const { error } = await this.supabase.storage
+        .from('meal-images')
+        .remove([path])
+
+      return !error
+    } catch {
+      return false
+    }
+  }
+
+  async getMealImageUrl(path: string): Promise<string | null> {
+    try {
+      const { data } = this.supabase.storage
+        .from('meal-images')
+        .getPublicUrl(path)
+
+      return data.publicUrl
+    } catch {
+      return null
+    }
+  }
+}
+
+// Server-side storage client
+export class SupabaseStorageServerClient {
+  private async getSupabase() {
+    return await createServerClient()
+  }
+
+  async verifyUserAccess(userId: string, imagePath: string): Promise<boolean> {
+    return imagePath.startsWith(`${userId}/`)
+  }
+}
