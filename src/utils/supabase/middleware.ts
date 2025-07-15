@@ -2,12 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Updates the Supabase session and synchronizes authentication cookies between the incoming Next.js request and the outgoing response.
+ * Refreshes the Supabase authentication session and updates authentication cookies in the Next.js response.
  *
- * Triggers a Supabase authentication user fetch to refresh the session and ensures any updated cookies are set on the response.
+ * Synchronizes authentication cookies between the incoming request and the outgoing response after refreshing the user session.
  *
- * @param request - The incoming Next.js request object containing cookies and session information.
- * @returns A NextResponse object with updated authentication cookies reflecting the refreshed session state.
+ * @param request - The incoming Next.js request containing authentication cookies.
+ * @returns A NextResponse object with authentication cookies updated to reflect the refreshed session.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -23,7 +23,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })

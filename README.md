@@ -31,5 +31,34 @@ In many ways it isn't. Except for a couple of critical factors: The unit of meas
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/edgarcerecerez/ai-fitness-coach?utm_source=oss&utm_medium=github&utm_campaign=edgarcerecerez%2Fai-fitness-coach&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 
+## Development & Debugging
+
+### Comprehensive Logging System
+
+This project includes a comprehensive Winston-based logging system for debugging authentication and other issues:
+
+**Features:**
+- **Multi-environment support**: Works in both browser and server environments
+- **Privacy-conscious**: Automatically masks sensitive data like email addresses and passwords
+- **Multiple log levels**: Error, Warn, Info, Debug with color-coded console output
+- **File rotation**: Automatic log file rotation with size and date-based limits
+- **Real-time debugging**: Comprehensive authentication flow logging
+
+**Quick Setup:**
+1. Copy `env.example` to `.env.local` and configure your Supabase credentials
+2. Set `LOG_LEVEL=debug` for detailed debugging
+3. Start development: `npm run dev`
+4. Check browser console and terminal for detailed logs
+5. Log files available in `logs/` directory (development only)
+
+**Authentication Debugging:**
+The login system includes detailed logging for:
+- Form validation steps
+- Supabase API calls and responses
+- Authentication state changes
+- Error conditions with full context
+
+See `docs/DEBUGGING.md` for the complete debugging guide.
+
 # Changelog
 For this project, I'll be tracking changes in this doc. 

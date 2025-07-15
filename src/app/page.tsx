@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { Brain, Camera, Scale, Heart, Moon, TrendingUp, ArrowRight, Sparkles, Target, Users } from "lucide-react"
 import { WeightProgressChart, CalorieIntakeChart, MoodSleepChart } from "@/components/dashboard-preview"
 
+/**
+ * Displays the main landing page for the AI Fitness Coach app, featuring navigation, hero section with dashboard previews, feature highlights, value proposition, call to action, and footer.
+ *
+ * Presents a multi-section, responsive layout introducing the app’s capabilities, benefits, and community focus using custom UI components, charts, and icons.
+ */
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -26,8 +31,11 @@ export default function HomePage() {
               <Link href="/about" className="text-slate-600 hover:text-slate-900 transition-colors">
                 About
               </Link>
-              <Link href="/signup" className="text-slate-600 hover:text-slate-900 transition-colors">
-                Try it now
+              <Link href="/profile" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Profile
+              </Link>
+              <Link href="/login" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Sign In
               </Link>
               <Button asChild>
                 <Link href="https://github.com/edgarcerecerez/ai-fitness-coach" className="flex items-center gap-2">
@@ -68,7 +76,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button size="lg" className="text-lg px-8 py-6 bg-white text-slate-900 hover:bg-slate-100" asChild>
-              <Link href="/signup">
+              <Link href="/login">
                 Start Your Journey
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
@@ -207,7 +215,7 @@ export default function HomePage() {
                 Built for Real People, Real Results
               </h2>
               <p className="text-lg text-slate-600 mb-6">
-                Unlike other fitness apps focused on monetization, we're committed to your genuine success. Our AI
+                Unlike other fitness apps focused on monetization, we&apos;re committed to your genuine success. Our AI
                 analyzes your unique patterns and provides actionable insights that fit your lifestyle.
               </p>
               <ul className="space-y-4 mb-8">
