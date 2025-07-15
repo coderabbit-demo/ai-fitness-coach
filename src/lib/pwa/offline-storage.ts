@@ -258,5 +258,5 @@ export class OfflineStorage {
   }
 }
 
-// Singleton instance
-export const offlineStorage = new OfflineStorage();
+// Singleton instance - only create in browser environment
+export const offlineStorage = typeof window !== 'undefined' ? new OfflineStorage() : null as any;

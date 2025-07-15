@@ -8,14 +8,17 @@ interface SyncResult {
 }
 
 export class SyncService {
-  private isOnline: boolean = navigator.onLine;
+  private isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
   private syncInProgress: boolean = false;
   private syncInterval: number | null = null;
   
   constructor() {
-    // Listen for online/offline events
-    window.addEventListener('online', () => this.handleOnline());
-    window.addEventListener('offline', () => this.handleOffline());
+    // Only set up event listeners in browser environment
+    if (typeof window !== 'undefined') {
+      // Listen for online/offline events
+      window.addEventListener('online', () => this.handleOnline());
+      window.addEventListener('offline', () => this.handleOffline());
+    }
   }
   
   private handleOnline(): void {
@@ -241,5 +244,5 @@ export class SyncService {
   }
 }
 
-// Singleton instance
-export const syncService = new SyncService();
+// Singleton instance - only create in browser environment
+export const syncService = typeof window !== 'undefined' ? new SyncService() : null as any;

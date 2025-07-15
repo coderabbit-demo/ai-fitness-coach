@@ -205,5 +205,5 @@ export class ImageOptimizer {
   }
 }
 
-// Singleton instance
-export const imageOptimizer = new ImageOptimizer();
+// Singleton instance - only create in browser environment
+export const imageOptimizer = typeof window !== 'undefined' ? new ImageOptimizer() : null as any;

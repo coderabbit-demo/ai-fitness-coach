@@ -94,5 +94,5 @@ export class ServiceWorkerManager {
   }
 }
 
-// Singleton instance
-export const swManager = new ServiceWorkerManager();
+// Singleton instance - only create in browser environment
+export const swManager = typeof window !== 'undefined' ? new ServiceWorkerManager() : null as any;

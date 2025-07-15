@@ -57,7 +57,7 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
   const loadFavorites = async () => {
     try {
       const cached = await offlineStorage.getFavoriteFoods();
-      setFavorites(cached.sort((a, b) => b.frequency - a.frequency));
+      setFavorites(cached.sort((a: FavoriteFood, b: FavoriteFood) => b.frequency - a.frequency));
     } catch (_error) {
       console.error('Failed to load favorites:', _error);
       toast({
