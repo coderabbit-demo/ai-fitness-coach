@@ -122,7 +122,17 @@ interface ChartTooltipContentProps {
   label?: string
   labelFormatter?: (value: unknown, payload: PayloadItem[]) => React.ReactNode
   labelClassName?: string
-  formatter?: (value: unknown, name: string, item: PayloadItem, index: number, payload: PayloadItem) => React.ReactNode
+  /**
+   * Custom formatter for tooltip content.
+   * @param value - The data value for this item
+   * @param name - The name/key for this data series
+   * @param item - The current payload item being rendered
+   * @param index - The index of the current item in the payload array
+   * @param currentItem - The current payload item (BREAKING: was previously the full payload array)
+   * @returns React node to render for this tooltip item
+   * @deprecated The 5th parameter signature changed in v0.2.0 from `payload: PayloadItem[]` to `currentItem: PayloadItem`
+   */
+  formatter?: (value: unknown, name: string, item: PayloadItem, index: number, currentItem: PayloadItem) => React.ReactNode
   color?: string
   nameKey?: string
   labelKey?: string
