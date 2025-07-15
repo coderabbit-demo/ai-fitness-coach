@@ -6,18 +6,39 @@ import { NutritionAnalysis } from './openai-vision';
 const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
 
-if (!credentials) {
-  throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable is required');
+// Only initialize if environment variables are available (not during build)
+let client: ImageAnnotatorClient | null = null;
+
+if (credentials && projectId) {
+  client = new ImageAnnotatorClient({
+    keyFilename: credentials,
+    projectId: projectId,
+  });
+  logger.info('Google Vision client initialized successfully');
+} else {
+  const missingVars = [];
+  if (!credentials) missingVars.push('GOOGLE_APPLICATION_CREDENTIALS');
+  if (!projectId) missingVars.push('GOOGLE_CLOUD_PROJECT_ID');
+  logger.warn(`Google Vision client not initialized - missing environment variables: ${missingVars.join(', ')}`);
 }
 
-if (!projectId) {
-  throw new Error('GOOGLE_CLOUD_PROJECT_ID environment variable is required');
+// Log initialization status for debugging
+if (process.env.NODE_ENV !== 'production') {
+  logger.info('Google Vision client initialization status:', { 
+    initialized: !!client, 
+    hasCredentials: !!credentials,
+    hasProjectId: !!projectId
+  });
 }
 
-const client = new ImageAnnotatorClient({
-  keyFilename: credentials,
-  projectId: projectId,
-});
+// Helper function to get the client with proper error handling
+function getGoogleVisionClient(): ImageAnnotatorClient {
+  if (!client) {
+    logger.error('Attempted to use Google Vision client but it is not initialized - GOOGLE_APPLICATION_CREDENTIALS and GOOGLE_CLOUD_PROJECT_ID environment variables are required');
+    throw new Error('GOOGLE_APPLICATION_CREDENTIALS and GOOGLE_CLOUD_PROJECT_ID environment variables are required');
+  }
+  return client;
+}
 
 /**
  * Analyzes a base64-encoded image using Google Cloud Vision to detect food-related objects and estimates their nutritional content.
@@ -30,11 +51,12 @@ const client = new ImageAnnotatorClient({
  */
 export async function analyzeImageWithGoogle(imageBase64: string): Promise<NutritionAnalysis> {
   try {
-    if (!client.objectLocalization) {
+    const visionClient = getGoogleVisionClient();
+    if (!visionClient.objectLocalization) {
       throw new Error('Google Vision client not properly initialized');
     }
     
-    const [result] = await client.objectLocalization({
+    const [result] = await visionClient.objectLocalization({
       image: {
         content: imageBase64,
       },
@@ -49,7 +71,7 @@ export async function analyzeImageWithGoogle(imageBase64: string): Promise<Nutri
 
     // Use detected objects to create nutrition analysis
     // This would require a food database lookup or additional AI processing
-    const analysis = await processFoodObjects(foodObjects, imageBase64);
+    const analysis = await processFoodObjects(foodObjects);
     
     logger.info('Google Vision analysis completed', {
       objectsDetected: objects.length,
@@ -70,10 +92,9 @@ export async function analyzeImageWithGoogle(imageBase64: string): Promise<Nutri
  * Each detected object is assigned default nutritional values and aggregated totals are calculated. This implementation does not perform actual food recognition or database lookup and is intended as a placeholder.
  *
  * @param objects - Array of detected objects, typically filtered for food-related items
- * @param imageBase64 - The base64-encoded image data
  * @returns A nutrition analysis with default values and a confidence score
  */
-async function processFoodObjects(objects: any[], imageBase64: string): Promise<NutritionAnalysis> {
+async function processFoodObjects(objects: Array<{ name?: string | null }>): Promise<NutritionAnalysis> {
   // Fallback implementation - would need food database or additional processing
   // For now, return a default structure
   return {

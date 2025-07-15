@@ -1,12 +1,12 @@
-import { inngest } from '@/lib/inngest/client';
+import { getInngestClient } from '@/lib/inngest/client';
 import { createClient } from '@/utils/supabase/server';
 import logger from '@/lib/logger';
 
-export const updateNutritionData = inngest.createFunction(
+export const updateNutritionData = getInngestClient().createFunction(
   { id: 'update-nutrition-data' },
   { event: 'nutrition/analysis.completed' },
   async ({ event, step }) => {
-    const { logId, userId, totalCalories, confidenceScore } = event.data;
+    const { logId, userId, confidenceScore } = event.data;
 
     // Update user's daily nutrition summary
     await step.run('update-daily-summary', async () => {

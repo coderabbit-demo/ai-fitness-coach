@@ -1,9 +1,9 @@
-import { inngest } from '@/lib/inngest/client';
+import { getInngestClient } from '@/lib/inngest/client';
 import { createClient } from '@/utils/supabase/server';
 import { AIErrorMonitor } from '@/lib/monitoring/ai-errors';
 import logger from '@/lib/logger';
 
-export const handleAnalysisError = inngest.createFunction(
+export const handleAnalysisError = getInngestClient().createFunction(
   { id: 'handle-analysis-error' },
   { event: 'food/analysis.failed' },
   async ({ event, step }) => {

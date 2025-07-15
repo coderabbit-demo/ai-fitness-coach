@@ -12,13 +12,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Lock, Eye, EyeOff, CheckCircle } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { logError } from '@/lib/logger'
 
 /**
  * Displays a password reset page that verifies session validity, enforces password complexity, and enables users to securely set a new password.
  *
  * If the reset session is invalid or expired, shows an error and a link to the login page. After a successful password reset, presents a confirmation message and redirects to login. Handles all user input, validation, feedback, and navigation for the password reset process.
  */
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -121,8 +122,6 @@ export default function ResetPasswordPage() {
         
         // Redirect to login after 3 seconds with proper cleanup and error handling
         timeoutRef.current = setTimeout(() => {
-import { clientLogger, logError } from '@/lib/logger'
-
           try {
             router.push("/login")
           } catch (navigationError) {
@@ -304,4 +303,8 @@ import { clientLogger, logError } from '@/lib/logger'
       </Card>
     </div>
   )
+}
+
+export default function ResetPasswordPage() {
+  return <ResetPasswordContent />
 }
