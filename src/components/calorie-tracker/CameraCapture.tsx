@@ -30,7 +30,7 @@ export default function CameraCapture({ onCapture, onCancel, className }: Camera
         CameraUtils.stopCameraStream(stream)
       }
     }
-  }, [facingMode])
+  }, [facingMode, stream])
 
   const initializeCamera = async () => {
     setIsLoading(true)
@@ -88,6 +88,10 @@ export default function CameraCapture({ onCapture, onCancel, className }: Camera
     canvas.toBlob((blob) => {
       if (blob) {
         onCapture(blob)
+      } else {
+        // Handle blob conversion failure
+        console.error('Failed to convert canvas to blob')
+        alert('Failed to capture image. Please try again.')
       }
     }, 'image/jpeg', 0.8)
   }

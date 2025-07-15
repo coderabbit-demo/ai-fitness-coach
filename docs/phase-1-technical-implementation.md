@@ -188,14 +188,18 @@ export class SupabaseStorageClient {
 
       onProgress?.({ progress: 100, stage: 'complete' })
 
-      // Get public URL
-      const { data: { publicUrl } } = this.supabase.storage
+      // Get signed URL for secure access
+      const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
         .from('meal-images')
-        .getPublicUrl(data.path)
+        .createSignedUrl(data.path, 86400) // 24 hours expiry
+
+      if (signedUrlError) {
+        return { success: false, error: signedUrlError.message }
+      }
 
       return { 
         success: true, 
-        url: publicUrl,
+        url: signedUrlData.signedUrl,
         path: data.path
       }
     } catch (error) {
@@ -1293,7 +1297,7 @@ export default function PhotoUpload({ className }: PhotoUploadProps) {
       // Upload to Supabase
       const result = await storageClient.uploadMealImage(
         processedImage.file,
-        'user-id', // This should come from auth context
+        user.id, // Get actual user ID from auth context
         (progress) => {
           setUploadState({
             isUploading: true,

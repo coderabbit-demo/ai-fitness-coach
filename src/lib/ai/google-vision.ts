@@ -2,9 +2,21 @@ import { ImageAnnotatorClient } from '@google-cloud/vision';
 import logger from '@/lib/logger';
 import { NutritionAnalysis } from './openai-vision';
 
+// Validate required environment variables
+const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
+
+if (!credentials) {
+  throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable is required');
+}
+
+if (!projectId) {
+  throw new Error('GOOGLE_CLOUD_PROJECT_ID environment variable is required');
+}
+
 const client = new ImageAnnotatorClient({
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+  keyFilename: credentials,
+  projectId: projectId,
 });
 
 export async function analyzeImageWithGoogle(imageBase64: string): Promise<NutritionAnalysis> {

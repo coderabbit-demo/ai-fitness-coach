@@ -46,17 +46,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
+    // Get signed URL for secure access
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('meal-images')
-      .getPublicUrl(fileName);
+      .createSignedUrl(fileName, 86400); // 24 hours expiry
+
+    if (signedUrlError) {
+      logger.error('Failed to create signed URL', { error: signedUrlError, userId: user.id });
+      return NextResponse.json({ error: 'Failed to create signed URL' }, { status: 500 });
+    }
 
     // Create nutrition log entry
     const { data: logData, error: logError } = await supabase
       .from('nutrition_logs')
       .insert({
         user_id: user.id,
-        image_url: publicUrl,
+        image_url: signedUrlData.signedUrl,
         notes: notes || null,
         processing_status: 'pending',
       })
@@ -78,7 +83,7 @@ export async function POST(request: NextRequest) {
     await inngest.send({
       name: 'food/image.uploaded',
       data: {
-        imageUrl: publicUrl,
+        imageUrl: signedUrlData.signedUrl,
         userId: user.id,
         logId: logData.id,
       },
@@ -87,13 +92,13 @@ export async function POST(request: NextRequest) {
     logger.info('Image uploaded and processing started', {
       userId: user.id,
       logId: logData.id,
-      imageUrl: publicUrl
+      imageUrl: signedUrlData.signedUrl
     });
 
     return NextResponse.json({
       success: true,
       logId: logData.id,
-      imageUrl: publicUrl,
+      imageUrl: signedUrlData.signedUrl,
     });
 
   } catch (error) {

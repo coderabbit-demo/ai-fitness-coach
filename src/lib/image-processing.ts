@@ -29,6 +29,12 @@ export class ImageProcessor {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')
+      
+      if (!ctx) {
+        reject(new Error('Unable to get 2D canvas context. Canvas may not be supported.'))
+        return
+      }
+      
       const img = new Image()
 
       img.onload = () => {
@@ -49,6 +55,9 @@ export class ImageProcessor {
         
         canvas.toBlob(
           (blob) => {
+            // Clean up object URL
+            URL.revokeObjectURL(objectUrl)
+            
             if (blob) {
               const processedFile = new File([blob], file.name, {
                 type: `image/${opts.format}`,
@@ -70,8 +79,13 @@ export class ImageProcessor {
         )
       }
 
-      img.onerror = () => reject(new Error('Failed to load image'))
-      img.src = URL.createObjectURL(file)
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src)
+        reject(new Error('Failed to load image'))
+      }
+      
+      const objectUrl = URL.createObjectURL(file)
+      img.src = objectUrl
     })
   }
 

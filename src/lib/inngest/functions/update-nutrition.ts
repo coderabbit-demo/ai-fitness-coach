@@ -12,16 +12,18 @@ export const updateNutritionData = inngest.createFunction(
     await step.run('update-daily-summary', async () => {
       const supabase = await createClient();
       
-      // Get today's date
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in local timezone
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       
-      // Calculate daily totals
+      // Calculate daily totals using timezone-aware boundaries
       const { data: todayLogs, error: fetchError } = await supabase
         .from('nutrition_logs')
         .select('total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g')
         .eq('user_id', userId)
-        .gte('created_at', `${today}T00:00:00`)
-        .lt('created_at', `${today}T23:59:59`);
+        .gte('created_at', startOfDay.toISOString())
+        .lt('created_at', endOfDay.toISOString());
 
       if (fetchError) {
         logger.error('Failed to fetch daily nutrition logs', { error: fetchError, userId });
@@ -38,7 +40,7 @@ export const updateNutritionData = inngest.createFunction(
 
       logger.info('Daily nutrition summary updated', {
         userId,
-        date: today,
+        date: startOfDay.toISOString().split('T')[0],
         dailyTotals
       });
 

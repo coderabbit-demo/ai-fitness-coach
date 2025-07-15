@@ -67,9 +67,14 @@ User Photo → Upload to Supabase Storage → Inngest Function → AI Model → 
    - [ ] Error handling
 
 2. **Set Up Supabase Storage**
-   - [ ] Configure image storage bucket
+   - [ ] Configure image storage bucket (private, not public)
    - [ ] Set up RLS policies for user images
    - [ ] Implement image upload API
+   - [ ] Generate signed URLs during upload (with appropriate expiry)
+   - [ ] Implement URL auto-expiration and revocation mechanisms
+   - [ ] Set up signing secret rotation procedures
+   - [ ] Validate user access before generating signed URLs
+   - [ ] Implement signed URL refresh logic for long-lived components
 
 3. **Basic Nutrition Entry Form**
    - [ ] Manual calorie entry as fallback

@@ -61,17 +61,31 @@ export default function PhotoUpload({ className }: PhotoUploadProps) {
       return
     }
 
+    // Revoke previous preview URL to prevent memory leaks
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+    }
+
     // Create preview URL
     const url = URL.createObjectURL(file)
     setSelectedFile(file)
     setPreviewUrl(url)
     setCurrentView('preview')
-  }, [])
+  }, [previewUrl])
 
   const handleCameraCapture = useCallback((imageBlob: Blob) => {
     const file = new File([imageBlob], 'meal-photo.jpg', { type: 'image/jpeg' })
     handleFileSelect(file)
   }, [handleFileSelect])
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

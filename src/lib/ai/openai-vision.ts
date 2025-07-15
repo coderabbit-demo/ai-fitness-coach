@@ -3,6 +3,8 @@ import logger from '@/lib/logger';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 3,
+  timeout: 60000, // 60 seconds
 });
 
 export interface NutritionAnalysis {
@@ -81,7 +83,16 @@ export async function analyzeImageWithOpenAI(imageBase64: string): Promise<Nutri
       throw new Error('No response from OpenAI');
     }
 
-    const analysis = JSON.parse(content) as NutritionAnalysis;
+    let analysis: NutritionAnalysis;
+    try {
+      analysis = JSON.parse(content) as NutritionAnalysis;
+    } catch (parseError) {
+      logger.error('Failed to parse OpenAI response as JSON', {
+        error: parseError,
+        content: content.substring(0, 500) // Log first 500 chars for debugging
+      });
+      throw new Error('Invalid JSON response from OpenAI');
+    }
     
     logger.info('OpenAI analysis completed', {
       totalCalories: analysis.totalCalories,

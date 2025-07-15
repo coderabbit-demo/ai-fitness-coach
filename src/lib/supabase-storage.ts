@@ -43,14 +43,18 @@ export class SupabaseStorageClient {
 
       onProgress?.({ progress: 100, stage: 'complete' })
 
-      // Get public URL
-      const { data: { publicUrl } } = this.supabase.storage
+      // Get signed URL for secure access
+      const { data: signedUrlData, error: signedUrlError } = await this.supabase.storage
         .from('meal-images')
-        .getPublicUrl(data.path)
+        .createSignedUrl(data.path, 86400) // 24 hours expiry
+
+      if (signedUrlError) {
+        return { success: false, error: signedUrlError.message }
+      }
 
       return { 
         success: true, 
-        url: publicUrl,
+        url: signedUrlData.signedUrl,
         path: data.path
       }
     } catch (error) {
@@ -75,11 +79,15 @@ export class SupabaseStorageClient {
 
   async getMealImageUrl(path: string): Promise<string | null> {
     try {
-      const { data } = this.supabase.storage
+      const { data, error } = await this.supabase.storage
         .from('meal-images')
-        .getPublicUrl(path)
+        .createSignedUrl(path, 86400) // 24 hours expiry
 
-      return data.publicUrl
+      if (error) {
+        return null
+      }
+
+      return data.signedUrl
     } catch {
       return null
     }
@@ -93,6 +101,43 @@ export class SupabaseStorageServerClient {
   }
 
   async verifyUserAccess(userId: string, imagePath: string): Promise<boolean> {
-    return imagePath.startsWith(`${userId}/`)
+    try {
+      // Validate input parameters
+      if (!userId || !imagePath) {
+        return false
+      }
+
+      // Sanitize imagePath to prevent path traversal attacks
+      const sanitizedPath = imagePath.replace(/\.\./g, '').replace(/\/+/g, '/')
+      
+      // Check if path starts with user ID (basic path validation)
+      if (!sanitizedPath.startsWith(`${userId}/`)) {
+        return false
+      }
+
+      // Get Supabase client and verify user session
+      const supabase = await this.getSupabase()
+      const { data: { user }, error } = await supabase.auth.getUser()
+      
+      if (error || !user || user.id !== userId) {
+        return false
+      }
+
+      // Additional validation: Check if user has access to this specific image path
+      const { data, error: queryError } = await supabase
+        .from('nutrition_logs')
+        .select('id')
+        .eq('user_id', userId)
+        .like('image_url', `%${sanitizedPath}%`)
+        .maybeSingle()
+
+      if (queryError) {
+        return false
+      }
+
+      return data !== null
+    } catch {
+      return false
+    }
   }
 }

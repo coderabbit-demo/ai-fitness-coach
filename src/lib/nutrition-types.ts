@@ -20,7 +20,7 @@ export interface NutritionLog {
   total_fat_g: number
   total_fiber_g: number
   image_url?: string
-  confidence_score: number
+  confidence_score?: number
   notes?: string
   logged_at: string
   created_at: string

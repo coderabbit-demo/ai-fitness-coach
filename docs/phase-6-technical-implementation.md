@@ -638,17 +638,21 @@ export function PhotoUpload() {
         throw uploadError
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL for secure access
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('meal-images')
-        .getPublicUrl(fileName)
+        .createSignedUrl(fileName, 86400) // 24 hours expiry
+
+      if (signedUrlError) {
+        throw signedUrlError
+      }
 
       // Create nutrition log entry (will be processed by AI later)
       const { data: nutritionLog, error: logError } = await supabase
         .from('nutrition_logs')
         .insert({
           user_id: user.id,
-          image_url: publicUrl,
+          image_url: signedUrlData.signedUrl,
           food_items: null, // Will be populated by AI
           total_calories: null, // Will be populated by AI
           confidence_score: null, // Will be populated by AI
@@ -1233,7 +1237,7 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          // Only set cookies on the response object, not the read-only request
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -1582,8 +1586,8 @@ export function Toaster() {
 **SQL Migration**: `supabase/migrations/003_setup_meal_images_storage.sql`
 
 ```sql
--- Create the meal-images bucket
-INSERT INTO storage.buckets (id, name, public) VALUES ('meal-images', 'meal-images', true);
+-- Create the meal-images bucket (private for security)
+INSERT INTO storage.buckets (id, name, public) VALUES ('meal-images', 'meal-images', false);
 
 -- Create RLS policies for meal-images bucket
 CREATE POLICY "Users can upload their own meal images" ON storage.objects 
@@ -1645,7 +1649,7 @@ describe('App Dashboard', () => {
     const mockSupabase = {
       auth: {
         getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: 'test-user-id', email: 'test@example.com' } }
+          data: { user: { id: '123e4567-e89b-12d3-a456-426614174000', email: 'test@example.com' } }
         })
       },
       from: jest.fn().mockReturnValue({
@@ -1717,7 +1721,7 @@ describe('App Layout', () => {
     const mockSupabase = {
       auth: {
         getUser: jest.fn().mockResolvedValue({
-          data: { user: { id: 'test-user-id', email: 'test@example.com' } }
+          data: { user: { id: '123e4567-e89b-12d3-a456-426614174000', email: 'test@example.com' } }
         })
       }
     }

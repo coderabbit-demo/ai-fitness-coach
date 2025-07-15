@@ -103,6 +103,12 @@ ALTER TABLE public.data_export_requests ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own predictions" ON public.analytics_predictions
     FOR SELECT USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can create their own predictions" ON public.analytics_predictions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own predictions" ON public.analytics_predictions
+    FOR UPDATE USING (auth.uid() = user_id);
+
 -- Family shares policies
 CREATE POLICY "Users can view their own family shares" ON public.family_shares
     FOR SELECT USING (auth.uid() = owner_id OR auth.uid() = shared_with_id);

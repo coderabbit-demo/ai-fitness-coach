@@ -22,7 +22,7 @@ export class FileValidator {
     if (!this.ALLOWED_TYPES.includes(file.type)) {
       return {
         isValid: false,
-        error: 'Invalid file type. Please upload a JPEG, PNG, or WebP image.'
+        error: 'Invalid file type. Please upload a JPEG, PNG, WebP, HEIC, or HEIF image.'
       }
     }
 

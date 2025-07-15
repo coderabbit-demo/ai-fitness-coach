@@ -153,8 +153,8 @@ ADD COLUMN IF NOT EXISTS image_url TEXT;
 -- Create storage bucket for meal images
 -- This migration sets up the storage infrastructure for Phase 2
 
--- Create storage bucket for meal images
-INSERT INTO storage.buckets (id, name, public) VALUES ('meal-images', 'meal-images', true)
+-- Create storage bucket for meal images (private for security)
+INSERT INTO storage.buckets (id, name, public) VALUES ('meal-images', 'meal-images', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Create RLS policies for meal images

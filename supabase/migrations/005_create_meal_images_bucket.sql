@@ -2,7 +2,7 @@
 -- This migration sets up the storage infrastructure for Phase 2
 
 -- Create storage bucket for meal images
-INSERT INTO storage.buckets (id, name, public) VALUES ('meal-images', 'meal-images', true)
+INSERT INTO storage.buckets (id, name, public) VALUES ('meal-images', 'meal-images', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Create RLS policies for meal images

@@ -211,7 +211,7 @@ export default async function CalorieTrackerPage() {
     .select('*')
     .eq('user_id', user.id)
     .eq('date', today)
-    .single();
+    .maybeSingle();
 
   // Fetch user goals
   const { data: userGoals } = await supabase

@@ -6,6 +6,20 @@ export async function GET(
   { params }: { params: { logId: string } }
 ) {
   try {
+    // Validate logId parameter
+    const { logId } = params;
+    if (!logId || typeof logId !== 'string') {
+      return NextResponse.json({ error: 'Invalid logId parameter' }, { status: 400 });
+    }
+
+    // Check if logId is a valid UUID format or numeric ID
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(logId);
+    const isNumeric = /^\d+$/.test(logId);
+    
+    if (!isUuid && !isNumeric) {
+      return NextResponse.json({ error: 'Invalid logId format. Must be UUID or numeric.' }, { status: 400 });
+    }
+
     const supabase = await createClient();
     
     // Check authentication
@@ -17,12 +31,26 @@ export async function GET(
     const { data: log, error } = await supabase
       .from('nutrition_logs')
       .select('processing_status, total_calories, confidence_score, food_items, error_message, created_at')
-      .eq('id', params.logId)
+      .eq('id', logId)
       .eq('user_id', user.id)
       .single();
 
     if (error) {
-      return NextResponse.json({ error: 'Log not found' }, { status: 404 });
+      // Handle different types of database errors
+      if (error.code === 'PGRST116') {
+        // No rows found
+        return NextResponse.json({ error: 'Log not found' }, { status: 404 });
+      } else if (error.code === 'PGRST301') {
+        // Row-level security violation
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      } else if (error.message.includes('connection') || error.message.includes('timeout')) {
+        // Network/connection issues
+        return NextResponse.json({ error: 'Database connection error' }, { status: 503 });
+      } else {
+        // Other database errors
+        console.error('Database error:', error);
+        return NextResponse.json({ error: 'Database error' }, { status: 500 });
+      }
     }
 
     return NextResponse.json({

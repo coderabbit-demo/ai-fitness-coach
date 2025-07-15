@@ -756,8 +756,16 @@ class VoiceProcessor {
   
   async startRecording(): Promise<string> {
     return new Promise((resolve, reject) => {
+      // Check for Speech Recognition API support
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        reject(new Error('Speech Recognition API not supported in this browser'));
+        return;
+      }
+      
       // Start speech recognition
-      this.recognition = new (window as any).webkitSpeechRecognition();
+      this.recognition = new SpeechRecognition();
       this.recognition.continuous = true;
       this.recognition.interimResults = true;
       
