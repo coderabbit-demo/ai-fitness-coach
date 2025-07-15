@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -33,16 +33,7 @@ export default function CameraCapture({ onCapture, onCancel, className }: Camera
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  useEffect(() => {
-    initializeCamera()
-    return () => {
-      if (stream) {
-        CameraUtils.stopCameraStream(stream)
-      }
-    }
-  }, [facingMode, stream])
-
-  const initializeCamera = async () => {
+  const initializeCamera = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
@@ -68,7 +59,8 @@ export default function CameraCapture({ onCapture, onCancel, className }: Camera
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream
       }
-    } catch {
+    } catch (error) {
+      console.error('Camera initialization failed:', error)
       setError({
         type: 'unknown',
         message: 'Failed to initialize camera'
@@ -76,7 +68,16 @@ export default function CameraCapture({ onCapture, onCancel, className }: Camera
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [facingMode])
+
+  useEffect(() => {
+    initializeCamera()
+    return () => {
+      if (stream) {
+        CameraUtils.stopCameraStream(stream)
+      }
+    }
+  }, [initializeCamera, stream])
 
   const captureImage = () => {
     if (!videoRef.current || !canvasRef.current) return

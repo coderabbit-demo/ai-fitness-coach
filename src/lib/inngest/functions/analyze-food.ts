@@ -1,9 +1,9 @@
-import { inngest } from '@/lib/inngest/client';
+import { getInngestClient } from '@/lib/inngest/client';
 import { NutritionAnalyzer } from '@/lib/ai/nutrition-analyzer';
 import { createClient } from '@/utils/supabase/server';
 import logger from '@/lib/logger';
 
-export const analyzeFoodImage = inngest!.createFunction(
+export const analyzeFoodImage = getInngestClient().createFunction(
   { id: 'analyze-food-image' },
   { event: 'food/image.uploaded' },
   async ({ event, step }) => {
