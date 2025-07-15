@@ -1,6 +1,8 @@
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
+import typescriptEslint from "@typescript-eslint/eslint-plugin";
+import typescriptParser from "@typescript-eslint/parser";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,9 +18,16 @@ const eslintConfig = [
   // Production code rules - stricter for main app code
   {
     files: ["**/*.{js,jsx,ts,tsx}"],
-    excludes: ["**/*.test.*", "**/*.spec.*", "**/__tests__/**/*"],
+    ignores: ["**/*.test.*", "**/*.spec.*", "**/__tests__/**/*", "**/label.test.tsx"],
+    languageOptions: {
+      parser: typescriptParser,
+    },
+    plugins: {
+      "@typescript-eslint": typescriptEslint,
+    },
     rules: {
-      // TypeScript - focus on real bugs
+      // TypeScript - focus on real bugs (using Next.js built-in rules)
+      "no-unused-vars": "off", // Disable base rule
       "@typescript-eslint/no-unused-vars": ["error", { 
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_",
@@ -55,7 +64,14 @@ const eslintConfig = [
   // API routes - slightly different rules
   {
     files: ["**/api/**/*.{js,ts}"],
+    languageOptions: {
+      parser: typescriptParser,
+    },
+    plugins: {
+      "@typescript-eslint": typescriptEslint,
+    },
     rules: {
+      "no-unused-vars": "off", // Disable base rule
       "@typescript-eslint/no-unused-vars": ["error", { 
         "argsIgnorePattern": "^(req|res|next|_)",
         "varsIgnorePattern": "^_" 
