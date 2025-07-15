@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Upload image to Supabase Storage
     const fileName = `${user.id}/${Date.now()}-${image.name}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('meal-images')
       .upload(fileName, image, {
         cacheControl: '3600',
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         image_url: signedUrlData.signedUrl,
+        image_path: fileName, // Store the file path for efficient lookups
         notes: notes || null,
         processing_status: 'pending',
       })

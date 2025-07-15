@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { SupabaseStorageServerClient } from '@/lib/supabase-storage-server';
 
 /**
  * Handles GET requests to retrieve the status and details of a nutrition log by its ID for the authenticated user.
@@ -35,7 +36,7 @@ export async function GET(
 
     const { data: log, error } = await supabase
       .from('nutrition_logs')
-      .select('processing_status, total_calories, confidence_score, food_items, error_message, created_at')
+      .select('processing_status, total_calories, confidence_score, food_items, error_message, created_at, image_path')
       .eq('id', logId)
       .eq('user_id', user.id)
       .single();
@@ -58,6 +59,13 @@ export async function GET(
       }
     }
 
+    // Generate fresh signed URL for image if image_path exists
+    let imageUrl: string | null = null;
+    if (log.image_path) {
+      const storageClient = new SupabaseStorageServerClient();
+      imageUrl = await storageClient.getSignedImageUrl(user.id, log.image_path, 3600);
+    }
+
     return NextResponse.json({
       status: log.processing_status,
       totalCalories: log.total_calories,
@@ -65,9 +73,10 @@ export async function GET(
       foodItems: log.food_items,
       errorMessage: log.error_message,
       createdAt: log.created_at,
+      imageUrl,
     });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 
