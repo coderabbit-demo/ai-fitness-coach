@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { Brain, Camera, Scale, Heart, Moon, TrendingUp, ArrowRight, Sparkles, Target, Users } from "lucide-react"
 import { WeightProgressChart, CalorieIntakeChart, MoodSleepChart } from "@/components/dashboard-preview"
 
+/**
+ * Displays the main landing page for the AI Fitness Coach app, featuring navigation, hero section with dashboard previews, feature highlights, value proposition, call to action, and footer.
+ *
+ * Presents a multi-section, responsive layout introducing the app’s capabilities, benefits, and community focus using custom UI components, charts, and icons.
+ */
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">

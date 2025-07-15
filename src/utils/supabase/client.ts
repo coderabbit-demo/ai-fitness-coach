@@ -2,9 +2,10 @@ import { createBrowserClient } from '@supabase/ssr'
 import { clientLogger, logError } from '@/lib/logger'
 
 /**
- * Creates and returns a Supabase client configured for browser usage.
+ * Creates and returns a Supabase client configured for browser environments.
  *
- * Uses environment variables to supply the Supabase project URL and anonymous key.
+ * Reads the Supabase project URL and anonymous key from environment variables, validating their presence. If either variable is missing, an error is thrown. In browser environments, attaches a listener to log detailed authentication state changes for debugging and monitoring purposes.
+ *
  * @returns A Supabase client instance for interacting with the project's backend from the browser.
  */
 export function createClient() {
