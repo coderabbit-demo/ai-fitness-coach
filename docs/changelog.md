@@ -14,9 +14,30 @@
 - 
 
 ### June 26, 2025
-- created a rough homepage.
- Next steps:
-- move the nav to its own component
-- Improve the copy, theming and colors
+
+**New Features**
+- Introduced login, signup, and password reset pages with integrated Supabase authentication, robust validation, and user-friendly feedback.
+- Added a comprehensive user profile page allowing users to view and edit personal, physical, and preference information, including weight unit selection with real-time conversion.
+- Implemented alert, label, and input UI components for consistent and accessible forms.
+- Added utilities for weight unit conversion, formatting, and validation.
+- Provided a client/server-aware logging system with configurable log levels and detailed authentication event tracking.
+
+**Documentation**
+- Added detailed guides on development, debugging, and the weight unit preferences system.
+- Introduced example environment configuration and updated changelog documentation.
+
+**Database & Configuration**
+- Created database tables and migrations for user profiles, health logs, and AI recommendations with row-level security.
+- Added support for weight unit preferences in user profiles and related database functions.
+- Enhanced authentication configuration to require stronger passwords.
+
+**Bug Fixes**
+- Improved navigation flow and text rendering in the main page header and hero section.
+
+**Chores**
+- Updated dependencies and added new packages for logging and UI components.
+- Added example seed data for fitness goals and dietary restrictions.
 
 Because the homepage doesn't face much of a technical risk, it's a lower priority. Focusing on the more challenging aspects: auth, tenancy, and first feature to ship.
+
+
