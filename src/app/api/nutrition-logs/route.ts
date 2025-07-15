@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { NutritionLogInput } from '@/lib/nutrition-types'
 
+/**
+ * Handles POST requests to create a new nutrition log for the authenticated user.
+ *
+ * Validates the request body for required and optional nutrition fields, inserts a new record into the `nutrition_logs` table, and returns the created log data on success. Responds with appropriate error messages and status codes for authentication, validation, or database errors.
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -75,6 +80,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Handles GET requests to retrieve a paginated list of nutrition logs for the authenticated user.
+ *
+ * Validates pagination parameters from the query string and returns nutrition logs ordered by most recent. Responds with appropriate error codes for authentication failure, invalid parameters, or database errors.
+ */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()

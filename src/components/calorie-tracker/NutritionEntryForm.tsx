@@ -17,6 +17,11 @@ interface NutritionEntryFormProps {
   className?: string
 }
 
+/**
+ * Renders a form for manual nutrition entry, allowing users to add, edit, and remove multiple food items, input nutritional values, and submit the aggregated data.
+ *
+ * Displays an optional meal image, calculates total nutrition values in real time, and provides fields for notes. On submission, validates input and calls the provided save handler with the nutrition log data.
+ */
 export default function NutritionEntryForm({
   imageUrl,
   onSave,

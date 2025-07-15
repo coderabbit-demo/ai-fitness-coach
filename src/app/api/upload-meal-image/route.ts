@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { SupabaseStorageClient } from '@/lib/supabase-storage'
 
+/**
+ * Handles authenticated image file uploads for meal images, performing validation and storing the file in Supabase Storage.
+ *
+ * Validates the user's authentication, file presence, file type, file size (max 10MB), and filename safety before uploading. Responds with appropriate HTTP status codes and error messages for invalid requests or upload failures. On success, returns a JSON object containing the file's URL and storage path.
+ *
+ * @returns A JSON response indicating success or failure, with relevant details or error messages.
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()

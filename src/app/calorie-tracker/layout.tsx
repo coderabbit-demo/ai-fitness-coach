@@ -1,6 +1,13 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
+/**
+ * Server component layout for the calorie tracker feature that enforces user authentication.
+ *
+ * Redirects unauthenticated users to the login page. Authenticated users see a layout with a navigation bar displaying the app title and their email, and the provided child components rendered below.
+ *
+ * @param children - The content to display within the main area of the layout
+ */
 export default async function CalorieTrackerLayout({
   children,
 }: {

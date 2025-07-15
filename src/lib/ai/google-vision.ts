@@ -19,6 +19,15 @@ const client = new ImageAnnotatorClient({
   projectId: projectId,
 });
 
+/**
+ * Analyzes a base64-encoded image using Google Cloud Vision to detect food-related objects and estimates their nutritional content.
+ *
+ * Filters detected objects to those related to food, fruit, or vegetables, then generates a nutrition analysis based on these objects.
+ *
+ * @param imageBase64 - The base64-encoded image data to analyze
+ * @returns A nutrition analysis object containing estimated nutritional values for detected food items
+ * @throws If the Google Vision client is not properly initialized or if the analysis process fails
+ */
 export async function analyzeImageWithGoogle(imageBase64: string): Promise<NutritionAnalysis> {
   try {
     if (!client.objectLocalization) {
@@ -55,6 +64,15 @@ export async function analyzeImageWithGoogle(imageBase64: string): Promise<Nutri
   }
 }
 
+/**
+ * Generates a fallback nutrition analysis for detected food-related objects in an image.
+ *
+ * Each detected object is assigned default nutritional values and aggregated totals are calculated. This implementation does not perform actual food recognition or database lookup and is intended as a placeholder.
+ *
+ * @param objects - Array of detected objects, typically filtered for food-related items
+ * @param imageBase64 - The base64-encoded image data
+ * @returns A nutrition analysis with default values and a confidence score
+ */
 async function processFoodObjects(objects: any[], imageBase64: string): Promise<NutritionAnalysis> {
   // Fallback implementation - would need food database or additional processing
   // For now, return a default structure

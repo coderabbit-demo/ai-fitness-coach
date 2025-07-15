@@ -26,6 +26,14 @@ export interface NutritionAnalysis {
   analysisNotes: string;
 }
 
+/**
+ * Analyzes a base64-encoded food image using OpenAI's GPT-4 Vision model and returns detailed nutritional information.
+ *
+ * Sends the image to the OpenAI API with instructions to estimate food items, portion sizes, macronutrients, fiber, total values, confidence score, and analysis notes. Parses and returns the structured nutritional analysis.
+ *
+ * @param imageBase64 - The base64-encoded JPEG image of the food to analyze
+ * @returns A NutritionAnalysis object containing per-item and total nutritional data, confidence score, and analysis notes
+ */
 export async function analyzeImageWithOpenAI(imageBase64: string): Promise<NutritionAnalysis> {
   try {
     const response = await openai.chat.completions.create({

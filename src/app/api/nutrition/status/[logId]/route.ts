@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+/**
+ * Handles GET requests to retrieve the status and details of a nutrition log by its ID for the authenticated user.
+ *
+ * Validates the `logId` parameter, checks user authentication, and queries the database for the specified nutrition log. Returns a JSON response with the log's status, total calories, confidence score, food items, error message, and creation timestamp, or an appropriate error response if the log is not found, access is denied, or other errors occur.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: { logId: string } }

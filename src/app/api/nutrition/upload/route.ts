@@ -3,6 +3,13 @@ import { createClient } from '@/utils/supabase/server';
 import { inngest } from '@/lib/inngest/client';
 import logger from '@/lib/logger';
 
+/**
+ * Handles image upload and nutrition log creation for authenticated users.
+ *
+ * Accepts a multipart form request containing an image and optional notes. Validates the image type and size, uploads it to Supabase Storage, generates a signed URL, and creates a nutrition log entry in the database. Triggers an AI analysis event for the uploaded image and returns a JSON response with the log ID and image URL. Returns appropriate error responses for authentication, validation, or upload failures.
+ *
+ * @returns A JSON response indicating success with the log ID and image URL, or an error message with the appropriate HTTP status code.
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();

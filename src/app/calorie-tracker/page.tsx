@@ -10,6 +10,13 @@ interface CalorieTrackerPageProps {
   searchParams: { success?: string }
 }
 
+/**
+ * Renders the calorie tracker page, displaying a meal logging interface for authenticated users.
+ *
+ * Redirects unauthenticated users to the login page. Conditionally shows a success alert if a meal has been logged, and provides a photo upload component for meal analysis.
+ *
+ * @param searchParams - Optional search parameters, including a `success` flag to indicate if a meal was logged successfully
+ */
 export default async function CalorieTrackerPage({ searchParams }: CalorieTrackerPageProps) {
   const supabase = await createClient()
 
