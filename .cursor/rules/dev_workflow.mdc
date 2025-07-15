@@ -1,9 +1,6 @@
 ---
-description: Guide for using Taskmaster to manage task-driven development workflows
-globs: **/*
-alwaysApply: true
+alwaysApply: false
 ---
-
 # Taskmaster Development Workflow
 
 This guide outlines the standard process for using Taskmaster to manage software development projects. It is written as a set of instructions for you, the AI agent.
