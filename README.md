@@ -1,3 +1,5 @@
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/edgarcerecerez/ai-fitness-coach?utm_source=oss&utm_medium=github&utm_campaign=edgarcerecerez%2Fai-fitness-coach&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 # AI Fitness Coach
 
 App that lets you put the pieces together for your fitness life. 
@@ -26,9 +28,6 @@ In many ways it isn't. Except for a couple of critical factors: The unit of meas
 - Tailwind
 - Vercel AI SDK
 - Shadcn for UI
-
- 
-![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/edgarcerecerez/ai-fitness-coach?utm_source=oss&utm_medium=github&utm_campaign=edgarcerecerez%2Fai-fitness-coach&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 
 ## Development & Debugging
