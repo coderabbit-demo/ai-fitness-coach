@@ -26,7 +26,7 @@ export default async function CalorieTrackerLayout({
       <nav className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">Calorie Tracker</h1>
+            <h1 className="text-xl font-semibold">AI Fitness Coach</h1>
             <div className="text-sm text-gray-600">
               Welcome, {user.email}
             </div>
@@ -34,7 +34,7 @@ export default async function CalorieTrackerLayout({
         </div>
       </nav>
       
-      <main className="flex-1">
+      <main className="container mx-auto px-4 py-6">
         {children}
       </main>
     </div>

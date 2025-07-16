@@ -226,12 +226,12 @@ export default function LoginPage() {
             email: data?.user?.email ? `${data.user.email.substring(0, 3)}***@${data.user.email.split('@')[1]}` : 'unknown',
             sessionId: data?.session?.access_token ? 'present' : 'missing'
           })
-          clientLogger.info('Login successful, redirecting to profile', {
+          clientLogger.info('Login successful, redirecting to app dashboard', {
             userId: data?.user?.id,
             hasSession: !!data?.session
           })
-          // Redirect to profile on successful login
-          router.push("/profile")
+          // Redirect to app dashboard on successful login
+          router.push("/app")
         }
       }
     } catch (error) {

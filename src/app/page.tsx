@@ -31,7 +31,7 @@ export default function HomePage() {
               <Link href="/about" className="text-slate-600 hover:text-slate-900 transition-colors">
                 About
               </Link>
-              <Link href="/profile" className="text-slate-600 hover:text-slate-900 transition-colors">
+              <Link href="/app/profile" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Profile
               </Link>
               <Link href="/login" className="text-slate-600 hover:text-slate-900 transition-colors">

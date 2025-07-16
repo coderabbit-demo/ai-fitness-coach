@@ -27,19 +27,4 @@ CREATE OR REPLACE TRIGGER update_nutrition_logs_updated_at
 CREATE INDEX IF NOT EXISTS idx_nutrition_logs_user_id_logged_at 
 ON public.nutrition_logs(user_id, logged_at DESC);
 
--- Verify RLS policies exist for nutrition_logs
-CREATE POLICY IF NOT EXISTS "Users can view their own nutrition logs" 
-ON public.nutrition_logs FOR SELECT 
-USING (auth.uid() = user_id);
-
-CREATE POLICY IF NOT EXISTS "Users can insert their own nutrition logs" 
-ON public.nutrition_logs FOR INSERT 
-WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY IF NOT EXISTS "Users can update their own nutrition logs" 
-ON public.nutrition_logs FOR UPDATE 
-USING (auth.uid() = user_id);
-
-CREATE POLICY IF NOT EXISTS "Users can delete their own nutrition logs" 
-ON public.nutrition_logs FOR DELETE 
-USING (auth.uid() = user_id);
+-- Verify RLS policies exist for nutrition_logs (policies already created in 001_create_user_profiles.sql)
