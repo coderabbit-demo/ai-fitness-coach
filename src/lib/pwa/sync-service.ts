@@ -1,10 +1,44 @@
-import { offlineStorage } from './offline-storage';
+import { getOfflineStorage } from './offline-storage';
 import { createClient } from '@/utils/supabase/client';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface SyncResult {
   success: number;
   failed: number;
   errors: Array<{ id: string; error: string }>;
+}
+
+interface SyncEntry {
+  id: string;
+  type: 'meal_log' | 'photo_upload' | 'user_action';
+  data: unknown;
+  timestamp: number;
+  synced: boolean;
+  retryCount: number;
+}
+
+interface MealLogData {
+  meal_name?: string;
+  notes?: string;
+  user_id: string;
+  meal_date: string;
+  meal_type: string;
+  confidence_score: number;
+  [key: string]: unknown;
+}
+
+interface PhotoUploadData {
+  fileName: string;
+  base64?: string;
+  blob?: Blob;
+  mimeType: string;
+  user_id: string;
+}
+
+interface UserActionData {
+  action: string;
+  payload: Record<string, unknown>;
+  user_id: string;
 }
 
 export class SyncService {
@@ -68,13 +102,13 @@ export class SyncService {
     const result: SyncResult = { success: 0, failed: 0, errors: [] };
     
     try {
-      const unsynced = await offlineStorage.getUnsynced();
+      const unsynced = await getOfflineStorage().getUnsynced();
       console.log(`Found ${unsynced.length} unsynced entries`);
       
       for (const entry of unsynced) {
         try {
           await this.syncEntry(entry);
-          await offlineStorage.markSynced(entry.id);
+          await getOfflineStorage().markSynced(entry.id);
           result.success++;
         } catch (error) {
           result.failed++;
@@ -84,12 +118,12 @@ export class SyncService {
           });
           
           // Increment retry count
-          await offlineStorage.incrementRetryCount(entry.id);
+          await getOfflineStorage().incrementRetryCount(entry.id);
           
           // Delete if too many retries
           if (entry.retryCount >= 5) {
             console.error(`Deleting entry ${entry.id} after 5 failed attempts`);
-            await offlineStorage.delete(entry.id);
+            await getOfflineStorage().delete(entry.id);
           }
         }
       }
@@ -104,20 +138,20 @@ export class SyncService {
     return result;
   }
   
-  private async syncEntry(entry: any): Promise<void> {
+  private async syncEntry(entry: SyncEntry): Promise<void> {
     const supabase = createClient();
     
     switch (entry.type) {
       case 'meal_log':
-        await this.syncMealLog(supabase, entry.data);
+        await this.syncMealLog(supabase, entry.data as MealLogData);
         break;
         
       case 'photo_upload':
-        await this.syncPhotoUpload(supabase, entry.data);
+        await this.syncPhotoUpload(supabase, entry.data as PhotoUploadData);
         break;
         
       case 'user_action':
-        await this.syncUserAction(supabase, entry.data);
+        await this.syncUserAction(supabase, entry.data as UserActionData);
         break;
         
       default:
@@ -125,7 +159,7 @@ export class SyncService {
     }
   }
   
-  private async syncMealLog(supabase: any, data: any): Promise<void> {
+  private async syncMealLog(supabase: SupabaseClient, data: MealLogData): Promise<void> {
     const { error } = await supabase
       .from('nutrition_logs')
       .insert({
@@ -149,9 +183,9 @@ export class SyncService {
     }
   }
   
-  private async syncPhotoUpload(supabase: any, data: any): Promise<void> {
+  private async syncPhotoUpload(supabase: SupabaseClient, data: PhotoUploadData): Promise<void> {
     // Convert base64 to blob if needed
-    const blob = data.blob || this.base64ToBlob(data.base64, data.mimeType);
+    const blob = data.blob || (data.base64 ? this.base64ToBlob(data.base64, data.mimeType) : new Blob());
     
     const fileName = `${data.user_id}/${Date.now()}_${data.fileName}`;
     const { error } = await supabase.storage
@@ -166,7 +200,7 @@ export class SyncService {
     }
   }
   
-  private async syncUserAction(supabase: any, data: any): Promise<void> {
+  private async syncUserAction(supabase: SupabaseClient, data: UserActionData): Promise<void> {
     // Handle various user actions like profile updates, settings changes, etc.
     switch (data.action) {
       case 'update_profile':
@@ -198,7 +232,7 @@ export class SyncService {
     return new Blob([byteArray], { type: mimeType });
   }
   
-  async queueMealLog(mealData: any): Promise<void> {
+  async queueMealLog(mealData: MealLogData): Promise<void> {
     if (this.isOnline) {
       // Try to sync immediately if online
       try {
@@ -207,22 +241,22 @@ export class SyncService {
       } catch (error) {
         // If sync fails, queue it
         console.error('Direct sync failed, queueing for later:', error);
-        await offlineStorage.store({
+        await getOfflineStorage().store({
           type: 'meal_log',
           data: mealData
         });
       }
     } else {
       // Queue for later sync
-      await offlineStorage.store({
+      await getOfflineStorage().store({
         type: 'meal_log',
         data: mealData
       });
     }
   }
   
-  async queuePhotoUpload(photoData: any): Promise<void> {
-    await offlineStorage.store({
+  async queuePhotoUpload(photoData: PhotoUploadData): Promise<void> {
+    await getOfflineStorage().store({
       type: 'photo_upload',
       data: photoData
     });
@@ -232,8 +266,8 @@ export class SyncService {
     }
   }
   
-  async queueUserAction(action: string, payload: any, userId: string): Promise<void> {
-    await offlineStorage.store({
+  async queueUserAction(action: string, payload: Record<string, unknown>, userId: string): Promise<void> {
+    await getOfflineStorage().store({
       type: 'user_action',
       data: { action, payload, user_id: userId }
     });
@@ -245,4 +279,15 @@ export class SyncService {
 }
 
 // Singleton instance - only create in browser environment
-export const syncService = typeof window !== 'undefined' ? new SyncService() : null as any;
+export const syncService: SyncService | null = typeof window !== 'undefined' ? new SyncService() : null;
+
+// Factory function for safe access to the sync service instance
+export function getSyncService(): SyncService {
+  if (typeof window === 'undefined') {
+    throw new Error('SyncService is only available in browser environment');
+  }
+  if (!syncService) {
+    throw new Error('SyncService instance not initialized');
+  }
+  return syncService;
+}

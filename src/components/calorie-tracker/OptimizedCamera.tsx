@@ -28,6 +28,8 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
   const [lightingQuality, setLightingQuality] = useState<'poor' | 'fair' | 'good'>('fair');
   const [batchPhotos, setBatchPhotos] = useState<File[]>([]);
   const [showTips, setShowTips] = useState(true);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const lightingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Camera tips
   const tips = [
@@ -48,12 +50,27 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
 
     return () => {
       clearInterval(tipInterval);
+      // Clean up lighting analysis interval
+      if (lightingIntervalRef.current) {
+        clearInterval(lightingIntervalRef.current);
+      }
       stopCamera();
     };
   }, [facingMode]);
 
   const startCamera = async () => {
     try {
+      // Clean up existing stream before starting new one
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+
+      // Clear any existing lighting analysis
+      if (lightingIntervalRef.current) {
+        clearInterval(lightingIntervalRef.current);
+      }
+
       const constraints = {
         video: {
           facingMode,
@@ -64,6 +81,7 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
 
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
+      setCameraError(null); // Clear any previous errors
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
@@ -73,6 +91,28 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
       analyzeLighting();
     } catch (error) {
       console.error('Error accessing camera:', error);
+      let errorMessage = 'Unable to access camera';
+      
+      if (error instanceof DOMException) {
+        switch (error.name) {
+          case 'NotAllowedError':
+            errorMessage = 'Camera access denied. Please allow camera permissions.';
+            break;
+          case 'NotFoundError':
+            errorMessage = 'No camera found on this device.';
+            break;
+          case 'NotReadableError':
+            errorMessage = 'Camera is already in use by another application.';
+            break;
+          case 'OverconstrainedError':
+            errorMessage = 'Camera does not support the requested configuration.';
+            break;
+          default:
+            errorMessage = 'Camera access failed. Please try again.';
+        }
+      }
+      
+      setCameraError(errorMessage);
     }
   };
 
@@ -84,7 +124,7 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
   };
 
   const analyzeLighting = () => {
-    const interval = setInterval(() => {
+    lightingIntervalRef.current = setInterval(() => {
       if (!videoRef.current || !canvasRef.current) return;
 
       const canvas = canvasRef.current;
@@ -112,8 +152,6 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
         setLightingQuality('good');
       }
     }, 1000);
-
-    return () => clearInterval(interval);
   };
 
   const handleCapture = useCallback(async () => {
@@ -188,6 +226,27 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
         muted
         className="w-full h-full object-cover"
       />
+
+      {/* Error display */}
+      {cameraError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+          <div className="max-w-md mx-4 p-6 bg-white rounded-lg text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <Camera className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Camera Error</h3>
+            <p className="text-gray-600 mb-4">{cameraError}</p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={startCamera} variant="outline">
+                Try Again
+              </Button>
+              <Button onClick={onCancel} variant="default">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Guidelines overlay */}
       {guidelines && (

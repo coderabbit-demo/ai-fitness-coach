@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { swManager } from '@/lib/pwa/service-worker';
 import { syncService } from '@/lib/pwa/sync-service';
 import { offlineStorage } from '@/lib/pwa/offline-storage';
@@ -10,75 +10,27 @@ interface PWAProviderProps {
   children: React.ReactNode;
 }
 
+// Type definition for beforeinstallprompt event
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 export function PWAProvider({ children }: PWAProviderProps) {
   const { toast } = useToast();
+  const cleanupRef = useRef<(() => void)[]>([]);
 
-  useEffect(() => {
-    // Initialize PWA features
-    initializePWA();
-  }, []);
-
-  const initializePWA = async () => {
-    try {
-      // Initialize offline storage
-      await offlineStorage.init();
-      console.log('Offline storage initialized');
-
-      // Register service worker
-      if ('serviceWorker' in navigator) {
-        await swManager.register();
-        console.log('Service worker registered');
-      }
-
-      // Start auto-sync
-      syncService.startAutoSync();
-      console.log('Auto-sync started');
-
-      // Listen for app update events
-      window.addEventListener('sw-update-available', () => {
-        toast({
-          title: "Update available",
-          description: "A new version is available. Reload to update."
-        });
-        // Auto-reload after 5 seconds
-        setTimeout(() => window.location.reload(), 5000);
-      });
-
-      // Add app install prompt handler
-      let deferredPrompt: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        
-        // Show custom install prompt after a delay
-        setTimeout(() => {
-          if (deferredPrompt) {
-            showInstallPrompt(deferredPrompt);
-          }
-        }, 60000); // Show after 1 minute
-      });
-
-      // Handle successful installation
-      window.addEventListener('appinstalled', () => {
-        console.log('PWA installed successfully');
-        toast({
-          title: "App installed!",
-          description: "You can now use the app offline",
-        });
-      });
-
-    } catch (error) {
-      console.error('Failed to initialize PWA features:', error);
-    }
-  };
-
-  const showInstallPrompt = (prompt: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const showInstallPrompt = useCallback((prompt: BeforeInstallPromptEvent) => {
     toast({
       title: "Install app?",
       description: "Add to home screen for quick access and offline use"
     });
     // Auto-prompt install after 2 seconds
-    setTimeout(async () => {
+    const timeoutId = setTimeout(async () => {
       try {
         await prompt.prompt();
         const { outcome } = await prompt.userChoice;
@@ -87,7 +39,85 @@ export function PWAProvider({ children }: PWAProviderProps) {
         console.error('Install prompt error:', error);
       }
     }, 2000);
-  };
+    cleanupRef.current.push(() => clearTimeout(timeoutId));
+  }, [toast]);
+
+  const initializePWA = useCallback(async () => {
+    try {
+      // Initialize offline storage
+      if (offlineStorage) {
+        await offlineStorage.init();
+        console.log('Offline storage initialized');
+      }
+
+      // Register service worker
+      if ('serviceWorker' in navigator && swManager) {
+        await swManager.register();
+        console.log('Service worker registered');
+      }
+
+      // Start auto-sync
+      if (syncService) {
+        syncService.startAutoSync();
+        console.log('Auto-sync started');
+      }
+
+      // Listen for app update events
+      const updateEventHandler = () => {
+        toast({
+          title: "Update available",
+          description: "A new version is available. Reload to update."
+        });
+        // Auto-reload after 5 seconds
+        const timeoutId = setTimeout(() => window.location.reload(), 5000);
+        cleanupRef.current.push(() => clearTimeout(timeoutId));
+      };
+      window.addEventListener('sw-update-available', updateEventHandler);
+      cleanupRef.current.push(() => window.removeEventListener('sw-update-available', updateEventHandler));
+
+      // Add app install prompt handler
+      let deferredPrompt: BeforeInstallPromptEvent | null = null;
+      const beforeInstallHandler = (e: Event) => {
+        e.preventDefault();
+        deferredPrompt = e as BeforeInstallPromptEvent;
+        
+        // Show custom install prompt after a delay
+        const timeoutId = setTimeout(() => {
+          if (deferredPrompt) {
+            showInstallPrompt(deferredPrompt);
+          }
+        }, 60000); // Show after 1 minute
+        cleanupRef.current.push(() => clearTimeout(timeoutId));
+      };
+      window.addEventListener('beforeinstallprompt', beforeInstallHandler);
+      cleanupRef.current.push(() => window.removeEventListener('beforeinstallprompt', beforeInstallHandler));
+
+      // Handle successful installation
+      const installedHandler = () => {
+        console.log('PWA installed successfully');
+        toast({
+          title: "App installed!",
+          description: "You can now use the app offline",
+        });
+      };
+      window.addEventListener('appinstalled', installedHandler);
+      cleanupRef.current.push(() => window.removeEventListener('appinstalled', installedHandler));
+
+    } catch (error) {
+      console.error('Failed to initialize PWA features:', error);
+    }
+  }, [toast, showInstallPrompt]);
+
+  useEffect(() => {
+    // Initialize PWA features
+    initializePWA();
+
+    // Cleanup function
+    return () => {
+      cleanupRef.current.forEach(cleanup => cleanup());
+      cleanupRef.current = [];
+    };
+  }, [initializePWA]);
 
   return <>{children}</>;
 }

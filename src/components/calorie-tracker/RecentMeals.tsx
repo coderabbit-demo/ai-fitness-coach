@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { Clock, Eye } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface Meal {
   id: string;
@@ -25,6 +27,8 @@ interface RecentMealsProps {
 }
 
 export function RecentMeals({ meals }: RecentMealsProps) {
+  const router = useRouter();
+
   const getConfidenceBadge = (score: number) => {
     if (score >= 0.8) return <Badge className="bg-green-100 text-green-800">High</Badge>;
     if (score >= 0.6) return <Badge className="bg-yellow-100 text-yellow-800">Medium</Badge>;
@@ -32,8 +36,13 @@ export function RecentMeals({ meals }: RecentMealsProps) {
   };
 
   const handleViewMeal = (mealId: string) => {
-    // Navigate to detailed meal view
-    console.log('View meal:', mealId);
+    // Navigate to detailed meal view page
+    router.push(`/meal/${mealId}`);
+  };
+
+  const handleViewAllMeals = () => {
+    // Navigate to all meals/food log page
+    router.push('/food-log');
   };
 
   if (meals.length === 0) {
@@ -70,9 +79,11 @@ export function RecentMeals({ meals }: RecentMealsProps) {
               <div className="flex items-center gap-3">
                 {/* Meal Image */}
                 {meal.image_url && (
-                  <img
+                  <Image
                     src={meal.image_url}
-                    alt="Meal"
+                    alt={`Meal containing ${meal.food_items.map(item => item.name).join(', ')}`}
+                    width={48}
+                    height={48}
                     className="w-12 h-12 object-cover rounded-lg"
                   />
                 )}
@@ -137,7 +148,7 @@ export function RecentMeals({ meals }: RecentMealsProps) {
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => console.log('View all meals')}
+              onClick={handleViewAllMeals}
             >
               View All Meals
             </Button>

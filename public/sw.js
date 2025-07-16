@@ -34,7 +34,36 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache when offline
+// Cache expiration settings (in milliseconds)
+const CACHE_EXPIRATION = {
+  API: 5 * 60 * 1000,      // 5 minutes for API responses
+  IMAGES: 24 * 60 * 60 * 1000, // 24 hours for images
+  STATIC: 7 * 24 * 60 * 60 * 1000 // 7 days for static assets
+};
+
+// Check if cached response is expired
+function isCacheExpired(response, maxAge) {
+  if (!response) return true;
+  
+  const cachedDate = response.headers.get('sw-cached-date');
+  if (!cachedDate) return true;
+  
+  const age = Date.now() - parseInt(cachedDate);
+  return age > maxAge;
+}
+
+// Add timestamp to response before caching
+function addTimestampToResponse(response) {
+  const modifiedResponse = new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: new Headers(response.headers)
+  });
+  modifiedResponse.headers.set('sw-cached-date', Date.now().toString());
+  return modifiedResponse;
+}
+
+// Fetch event - serve from cache when offline or use network-first for APIs
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
@@ -42,11 +71,52 @@ self.addEventListener('fetch', (event) => {
   // Skip Chrome extension requests
   if (event.request.url.startsWith('chrome-extension://')) return;
 
+  // Use network-first strategy for API responses
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Check if valid response
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+
+          // Clone and cache the response with timestamp
+          const responseToCache = addTimestampToResponse(response.clone());
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+
+          return response;
+        })
+        .catch(() => {
+          // Network failed - try cache
+          return caches.match(event.request)
+            .then((cachedResponse) => {
+              if (cachedResponse && !isCacheExpired(cachedResponse, CACHE_EXPIRATION.API)) {
+                return cachedResponse;
+              }
+              // Return stale cache if available, better than nothing
+              return cachedResponse || new Response('Network unavailable', { status: 503 });
+            });
+        })
+    );
+    return;
+  }
+
+  // Use cache-first strategy for static assets and images
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Cache hit - return response
-        if (response) {
+        // Determine cache expiration based on request type
+        let maxAge = CACHE_EXPIRATION.STATIC;
+        if (event.request.destination === 'image') {
+          maxAge = CACHE_EXPIRATION.IMAGES;
+        }
+
+        // Cache hit - check if expired
+        if (response && !isCacheExpired(response, maxAge)) {
           return response;
         }
 
@@ -59,12 +129,11 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
 
-          // Clone the response
-          const responseToCache = response.clone();
+          // Clone the response and add timestamp
+          const responseToCache = addTimestampToResponse(response.clone());
 
-          // Cache API responses and static assets
+          // Cache static assets and images
           if (
-            event.request.url.includes('/api/') ||
             event.request.destination === 'image' ||
             event.request.destination === 'script' ||
             event.request.destination === 'style'
@@ -76,6 +145,9 @@ self.addEventListener('fetch', (event) => {
           }
 
           return response;
+        }).catch(() => {
+          // Network failed - return stale cache if available
+          return response || caches.match('/offline.html');
         });
       })
       .catch(() => {

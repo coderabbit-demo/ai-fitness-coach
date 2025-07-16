@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { createClient } from '@/utils/supabase/client';
 import { format } from 'date-fns';
 import { 
@@ -42,6 +44,15 @@ export function FoodLogManager() {
   const [dateFilter, setDateFilter] = useState('');
   const [editingLog, setEditingLog] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<FoodLog>>({});
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    logId: string | null;
+    logName: string;
+  }>({
+    isOpen: false,
+    logId: null,
+    logName: ''
+  });
 
   useEffect(() => {
     fetchLogs();
@@ -130,8 +141,17 @@ export function FoodLogManager() {
     }
   };
 
-  const handleDelete = async (logId: string) => {
-    if (!confirm('Are you sure you want to delete this meal log?')) return;
+  const handleDelete = (logId: string, logName: string) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      logId,
+      logName
+    });
+  };
+
+  const confirmDelete = async () => {
+    const { logId } = deleteConfirmation;
+    if (!logId) return;
 
     try {
       const supabase = createClient();
@@ -142,9 +162,15 @@ export function FoodLogManager() {
 
       if (error) throw error;
       fetchLogs();
+      setDeleteConfirmation({ isOpen: false, logId: null, logName: '' });
     } catch (error) {
       console.error('Error deleting log:', error);
+      setDeleteConfirmation({ isOpen: false, logId: null, logName: '' });
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation({ isOpen: false, logId: null, logName: '' });
   };
 
   const getConfidenceBadge = (score: number) => {
@@ -214,7 +240,7 @@ export function FoodLogManager() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(log.id)}
+                          onClick={() => handleDelete(log.id, log.food_items?.[0]?.name || 'meal')}
                           className="text-red-600 hover:text-red-800"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -322,9 +348,11 @@ export function FoodLogManager() {
                     {/* Image */}
                     {log.image_url && (
                       <div className="mt-3">
-                        <img 
+                        <Image 
                           src={log.image_url} 
                           alt="Meal" 
+                          width={128}
+                          height={128}
                           className="w-32 h-32 object-cover rounded-lg cursor-pointer hover:opacity-80"
                           onClick={() => window.open(log.image_url, '_blank')}
                         />
@@ -337,6 +365,33 @@ export function FoodLogManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmation.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="max-w-md w-full mx-4">
+            <CardHeader>
+              <CardTitle>Confirm Deletion</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>
+                  Are you sure you want to delete the meal log for &ldquo;{deleteConfirmation.logName}&rdquo;? 
+                  This action cannot be undone.
+                </AlertDescription>
+              </Alert>
+              <div className="flex gap-3 justify-end">
+                <Button variant="outline" onClick={cancelDelete}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={confirmDelete}>
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 } 

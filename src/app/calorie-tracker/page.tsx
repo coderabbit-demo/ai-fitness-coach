@@ -57,30 +57,42 @@ export default async function CalorieTrackerPage({ searchParams }: CalorieTracke
     )
   }
 
-  // Fetch dashboard data
+  // Fetch dashboard data with error handling
   const today = new Date().toISOString().split('T')[0];
-  const { data: dailySummary } = await supabase
+  const { data: dailySummary, error: dailySummaryError } = await supabase
     .from('daily_nutrition_summaries')
     .select('*')
     .eq('user_id', user.id)
     .eq('date', today)
     .maybeSingle();
 
-  // Fetch user goals
-  const { data: userGoals } = await supabase
+  if (dailySummaryError) {
+    console.error('Error fetching daily summary:', dailySummaryError);
+  }
+
+  // Fetch user goals with error handling
+  const { data: userGoals, error: userGoalsError } = await supabase
     .from('user_nutrition_goals')
     .select('*')
     .eq('user_id', user.id)
     .maybeSingle();
 
-  // Fetch recent meals
-  const { data: recentMeals } = await supabase
+  if (userGoalsError) {
+    console.error('Error fetching user goals:', userGoalsError);
+  }
+
+  // Fetch recent meals with error handling
+  const { data: recentMeals, error: recentMealsError } = await supabase
     .from('nutrition_logs')
     .select('*')
     .eq('user_id', user.id)
     .eq('processing_status', 'completed')
     .order('created_at', { ascending: false })
     .limit(5);
+
+  if (recentMealsError) {
+    console.error('Error fetching recent meals:', recentMealsError);
+  }
 
   // Main dashboard view
   return (

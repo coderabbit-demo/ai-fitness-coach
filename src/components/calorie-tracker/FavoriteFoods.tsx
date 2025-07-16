@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 import { offlineStorage } from '@/lib/pwa/offline-storage';
 import { syncService } from '@/lib/pwa/sync-service';
 import { useToast } from '@/hooks/use-toast';
+import { createClient } from '@/utils/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 interface FavoriteFood {
   id: string;
@@ -23,7 +25,7 @@ interface FavoriteFood {
   imageUrl?: string;
   frequency: number;
   lastUsed: Date;
-  tags: string[];
+  tags?: string[];
   customServingSizes?: Array<{
     name: string;
     multiplier: number;
@@ -45,19 +47,36 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
   const [loading, setLoading] = useState(true);
   const [selectedFood, setSelectedFood] = useState<FavoriteFood | null>(null);
   const [portion, setPortion] = useState(1);
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const supabase = createClient();
+
+  // Check authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Auth check failed:', error);
+        }
+        setUser(user);
+      } catch (error) {
+        console.error('Failed to get user:', error);
+      }
+    };
+    
+    checkAuth();
+  }, [supabase.auth]);
 
   const mealTags = ['breakfast', 'lunch', 'dinner', 'snack'];
   const allTags = [...mealTags, 'quick', 'healthy', 'protein', 'low-carb'];
 
-  useEffect(() => {
-    loadFavorites();
-  }, []);
-
   const loadFavorites = async () => {
     try {
-      const cached = await offlineStorage.getFavoriteFoods();
-      setFavorites(cached.sort((a: FavoriteFood, b: FavoriteFood) => b.frequency - a.frequency));
+      const cached = await offlineStorage?.getFavoriteFoods();
+      if (cached) {
+        setFavorites(cached.sort((a: FavoriteFood, b: FavoriteFood) => b.frequency - a.frequency));
+      }
     } catch (_error) {
       console.error('Failed to load favorites:', _error);
       toast({
@@ -73,7 +92,7 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
   const filteredFavorites = favorites.filter(food => {
     const matchesSearch = food.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTags = selectedTags.length === 0 || 
-      selectedTags.some(tag => food.tags.includes(tag));
+      selectedTags.some(tag => food.tags?.includes(tag) ?? false);
     return matchesSearch && matchesTags;
   });
 
@@ -96,6 +115,16 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
   };
 
   const logFavoriteFood = async (food: FavoriteFood, portionSize: number) => {
+    // Check if user is authenticated
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to log meals",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const adjustedNutrition = {
       calories: Math.round(food.calories * portionSize),
       protein: Math.round(food.macros.protein * portionSize),
@@ -124,11 +153,11 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
       notes: 'Added from favorites',
       meal_date: new Date().toISOString().split('T')[0],
       meal_type: getMealType(),
-      user_id: 'current-user-id' // Replace with actual user ID
+      user_id: user.id // Use actual authenticated user ID
     };
 
     try {
-      await syncService.queueMealLog(mealData);
+      await syncService?.queueMealLog(mealData);
       
       // Update frequency
       const updatedFood = {
@@ -136,7 +165,7 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
         frequency: food.frequency + 1,
         lastUsed: new Date()
       };
-      await offlineStorage.saveFavoriteFood(updatedFood);
+      await offlineStorage?.saveFavoriteFood(updatedFood);
       
       toast({
         title: "Meal logged!",
@@ -145,7 +174,8 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
 
       // Refresh favorites list
       await loadFavorites();
-    } catch {
+    } catch (error) {
+      console.error('Failed to log meal:', error);
       toast({
         title: "Error",
         description: "Failed to log meal",
@@ -273,7 +303,7 @@ export const FavoriteFoods: React.FC<FavoriteFoodsProps> = ({
                     </div>
                   </div>
                   
-                  {food.tags.length > 0 && (
+                  {food.tags && food.tags.length > 0 && (
                     <div className="flex gap-1 mt-2">
                       {food.tags.map(tag => (
                         <Badge key={tag} variant="secondary" className="text-xs">

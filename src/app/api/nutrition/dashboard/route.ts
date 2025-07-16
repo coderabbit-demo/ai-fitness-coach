@@ -6,7 +6,21 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '7');
+    
+    // Validate days parameter
+    const daysParam = searchParams.get('days');
+    let days = 7; // default value
+    
+    if (daysParam) {
+      const parsedDays = parseInt(daysParam, 10);
+      if (isNaN(parsedDays) || parsedDays < 1 || parsedDays > 30) {
+        return NextResponse.json(
+          { error: 'Invalid days parameter. Must be a positive integer between 1 and 30.' }, 
+          { status: 400 }
+        );
+      }
+      days = parsedDays;
+    }
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -51,13 +51,13 @@ export function AIAnalysisDisplay({ log, onReprocess, onCorrect }: AIAnalysisPro
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-green-500" aria-label="Analysis completed successfully" />;
       case 'processing':
-        return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />;
+        return <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" aria-label="Analysis in progress" />;
       case 'failed':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+        return <AlertTriangle className="h-4 w-4 text-red-500" aria-label="Analysis failed" />;
       default:
-        return <RefreshCw className="h-4 w-4 text-gray-500" />;
+        return <RefreshCw className="h-4 w-4 text-gray-500" aria-label="Analysis status unknown" />;
     }
   };
 

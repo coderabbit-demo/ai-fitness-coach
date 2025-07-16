@@ -1,5 +1,14 @@
+// Extended interface for ServiceWorkerRegistration with sync support
+interface ServiceWorkerRegistrationWithSync extends ServiceWorkerRegistration {
+  sync?: {
+    register(tag: string): Promise<void>;
+    getTags(): Promise<string[]>;
+  };
+}
+
 export class ServiceWorkerManager {
-  private registration: ServiceWorkerRegistration | null = null;
+  private registration: ServiceWorkerRegistrationWithSync | null = null;
+  private updateCheckInterval: NodeJS.Timeout | null = null;
 
   async register(): Promise<void> {
     if ('serviceWorker' in navigator) {
@@ -21,7 +30,7 @@ export class ServiceWorkerManager {
         });
 
         // Check for updates periodically
-        setInterval(() => {
+        this.updateCheckInterval = setInterval(() => {
           this.registration?.update();
         }, 60 * 60 * 1000); // Check every hour
       } catch (error) {
@@ -31,6 +40,12 @@ export class ServiceWorkerManager {
   }
 
   async unregister(): Promise<void> {
+    // Clear the periodic update check interval
+    if (this.updateCheckInterval) {
+      clearInterval(this.updateCheckInterval);
+      this.updateCheckInterval = null;
+    }
+    
     if (this.registration) {
       await this.registration.unregister();
       this.registration = null;
@@ -82,8 +97,8 @@ export class ServiceWorkerManager {
     }
 
     try {
-      // Type assertion for sync API
-      const syncManager = (this.registration as any).sync;
+      // Access sync API with proper typing
+      const syncManager = this.registration.sync;
       if (syncManager && syncManager.register) {
         await syncManager.register('sync-meals');
         console.log('Background sync registered');
@@ -95,4 +110,4 @@ export class ServiceWorkerManager {
 }
 
 // Singleton instance - only create in browser environment
-export const swManager = typeof window !== 'undefined' ? new ServiceWorkerManager() : null as any;
+export const swManager = typeof window !== 'undefined' ? new ServiceWorkerManager() : null;

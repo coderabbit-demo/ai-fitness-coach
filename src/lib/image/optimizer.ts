@@ -195,12 +195,20 @@ export class ImageOptimizer {
   }
 
   async extractEXIFData(_file: File): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any
-    // This is a placeholder for EXIF extraction
-    // In a real implementation, you'd use a library like exif-js
+    // ⚠️ UNIMPLEMENTED: This method is a placeholder and does not extract real EXIF data
+    // TODO: Implement EXIF extraction using a library like:
+    // - exif-js: https://github.com/exif-js/exif-js
+    // - piexifjs: https://github.com/hMatoba/piexifjs  
+    // - exifr: https://github.com/MikeKovarik/exifr
+    console.warn('extractEXIFData is not implemented - returning mock data');
+    
     return {
-      orientation: 1,
-      dateTime: new Date(),
-      // Add more EXIF fields as needed
+      orientation: 1, // Default orientation (no rotation needed)
+      dateTime: new Date(), // Current date as placeholder
+      make: null, // Camera manufacturer - not extracted
+      model: null, // Camera model - not extracted
+      gpsInfo: null, // GPS coordinates - not extracted
+      // Real implementation should extract actual EXIF metadata from the image file
     };
   }
 }

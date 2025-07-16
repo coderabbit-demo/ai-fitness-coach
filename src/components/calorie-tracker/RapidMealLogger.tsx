@@ -7,6 +7,58 @@ import { useToast } from '@/hooks/use-toast';
 import { OptimizedCamera } from './OptimizedCamera';
 import { syncService } from '@/lib/pwa/sync-service';
 import { offlineStorage } from '@/lib/pwa/offline-storage';
+import { createClient } from '@/utils/supabase/client';
+import type { User } from '@supabase/supabase-js';
+
+// Speech Recognition API interfaces
+interface SpeechRecognitionResult {
+  readonly [index: number]: SpeechRecognitionAlternative;
+  readonly length: number;
+}
+
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+  readonly resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  readonly [index: number]: SpeechRecognitionResult;
+  readonly length: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+  readonly message?: string;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+    webkitSpeechRecognition: {
+      new (): SpeechRecognition;
+    };
+  }
+}
 
 interface QuickAction {
   id: string;
@@ -19,7 +71,26 @@ export const RapidMealLogger: React.FC = () => {
   const [mode, setMode] = useState<'photo' | 'voice' | 'favorites' | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const supabase = createClient();
+
+  // Check authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Auth check failed:', error);
+        }
+        setUser(user);
+      } catch (error) {
+        console.error('Failed to get user:', error);
+      }
+    };
+    
+    checkAuth();
+  }, [supabase.auth]);
 
   const quickActions: QuickAction[] = [
     { id: 'photo', label: 'Photo', icon: Camera },
@@ -50,7 +121,7 @@ export const RapidMealLogger: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleQuickPhoto = async () => {
     setMode('photo');
@@ -59,6 +130,16 @@ export const RapidMealLogger: React.FC = () => {
 
   const handlePhotoCapture = async (photo: File) => {
     setShowCamera(false);
+    
+    // Check authentication
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to capture meals",
+        variant: "destructive"
+      });
+      return;
+    }
     
     toast({
       title: "Analyzing photo...",
@@ -70,11 +151,11 @@ export const RapidMealLogger: React.FC = () => {
       if (!navigator.onLine) {
         const reader = new FileReader();
         reader.onloadend = async () => {
-          await syncService.queuePhotoUpload({
+          await syncService?.queuePhotoUpload({
             fileName: photo.name,
             base64: reader.result?.toString().split(',')[1],
             mimeType: photo.type,
-            user_id: 'current-user-id' // Replace with actual user ID
+            user_id: user.id // Use actual authenticated user ID
           });
         };
         reader.readAsDataURL(photo);
@@ -102,18 +183,28 @@ export const RapidMealLogger: React.FC = () => {
   };
 
   const handleVoiceEntry = async () => {
+    // Check authentication
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to log meals",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setMode('voice');
     setIsRecording(true);
 
     try {
       // Check for browser support
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
       
-      if (!SpeechRecognition) {
+      if (!SpeechRecognitionClass) {
         throw new Error('Speech recognition not supported');
       }
 
-      const recognition = new SpeechRecognition();
+      const recognition = new SpeechRecognitionClass();
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US';
@@ -125,7 +216,7 @@ export const RapidMealLogger: React.FC = () => {
         });
       };
 
-      recognition.onresult = async (event: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      recognition.onresult = async (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         
         toast({
@@ -134,11 +225,11 @@ export const RapidMealLogger: React.FC = () => {
         });
 
         // Queue for AI processing
-        await syncService.queueMealLog({
+        await syncService?.queueMealLog({
           meal_name: transcript,
           notes: "Voice entry",
           confidence_score: 0.8,
-          user_id: 'current-user-id', // Replace with actual user ID
+          user_id: user.id, // Use actual authenticated user ID
           meal_date: new Date().toISOString().split('T')[0],
           meal_type: getMealType()
         });
@@ -179,9 +270,9 @@ export const RapidMealLogger: React.FC = () => {
     setMode('favorites');
     
     try {
-      const favorites = await offlineStorage.getFavoriteFoods();
+      const favorites = await offlineStorage?.getFavoriteFoods();
       
-      if (favorites.length === 0) {
+      if (!favorites || favorites.length === 0) {
         toast({
           title: "No favorites yet",
           description: "Your favorite foods will appear here"
