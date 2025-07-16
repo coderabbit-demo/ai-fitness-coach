@@ -208,8 +208,12 @@ export const OptimizedCamera: React.FC<CameraProps> = ({
 
   const handleBatchComplete = () => {
     if (batchPhotos.length > 0) {
-      // In a real implementation, you'd handle multiple photos
-      onCapture(batchPhotos[0]);
+      // Process all photos in the batch
+      batchPhotos.forEach(photo => {
+        onCapture(photo);
+      });
+      // Clear the batch after processing
+      setBatchPhotos([]);
     }
   };
 

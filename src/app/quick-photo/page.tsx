@@ -64,12 +64,25 @@ export default function QuickPhotoPage() {
       reader.onloadend = async () => {
         try {
           if (syncService) {
-            await syncService.queuePhotoUpload({
+            const signedUrl = await syncService.queuePhotoUpload({
               fileName: optimizedPhoto.name,
               base64: reader.result?.toString().split(',')[1],
               mimeType: optimizedPhoto.type,
               user_id: user.id // Use actual authenticated user ID
             });
+
+            if (signedUrl) {
+              console.log('Photo uploaded with signed URL:', signedUrl);
+              toast({
+                title: "Photo uploaded!",
+                description: "Photo uploaded successfully and ready for processing"
+              });
+            } else {
+              toast({
+                title: "Photo queued",
+                description: "Photo saved and will be uploaded when online"
+              });
+            }
           } else {
             throw new Error('Sync service not available');
           }

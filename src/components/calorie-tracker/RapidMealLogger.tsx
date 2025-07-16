@@ -147,30 +147,40 @@ export const RapidMealLogger: React.FC = () => {
     });
 
     try {
-      // In offline mode, queue for later
-      if (!navigator.onLine) {
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          await syncService?.queuePhotoUpload({
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const signedUrl = await syncService?.queuePhotoUpload({
             fileName: photo.name,
             base64: reader.result?.toString().split(',')[1],
             mimeType: photo.type,
             user_id: user.id // Use actual authenticated user ID
           });
-        };
-        reader.readAsDataURL(photo);
-        
-        toast({
-          title: "Photo saved offline",
-          description: "Will analyze when connection is restored"
-        });
-      } else {
-        // Online processing would happen here
-        toast({
-          title: "Meal logged!",
-          description: "Successfully analyzed and saved"
-        });
-      }
+
+          if (signedUrl) {
+            // Online: Photo uploaded successfully with signed URL
+            console.log('Photo uploaded with signed URL:', signedUrl);
+            toast({
+              title: "Meal logged!",
+              description: "Photo uploaded and ready for analysis"
+            });
+          } else {
+            // Offline: Photo queued for later sync
+            toast({
+              title: "Photo saved offline",
+              description: "Will upload when connection is restored"
+            });
+          }
+        } catch (error) {
+          console.error('Failed to upload photo:', error);
+          toast({
+            title: "Upload failed",
+            description: "Failed to upload photo. Please try again.",
+            variant: "destructive"
+          });
+        }
+      };
+      reader.readAsDataURL(photo);
     } catch {
       toast({
         title: "Error",

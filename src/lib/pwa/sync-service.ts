@@ -147,7 +147,9 @@ export class SyncService {
         break;
         
       case 'photo_upload':
-        await this.syncPhotoUpload(supabase, entry.data as PhotoUploadData);
+        const signedUrl = await this.syncPhotoUpload(supabase, entry.data as PhotoUploadData);
+        // Note: For background sync, we don't return the URL as the original caller is no longer waiting
+        console.log('Photo uploaded with signed URL:', signedUrl);
         break;
         
       case 'user_action':
@@ -183,13 +185,13 @@ export class SyncService {
     }
   }
   
-  private async syncPhotoUpload(supabase: SupabaseClient, data: PhotoUploadData): Promise<void> {
+  private async syncPhotoUpload(supabase: SupabaseClient, data: PhotoUploadData): Promise<string> {
     // Convert base64 to blob if needed
     const blob = data.blob || (data.base64 ? this.base64ToBlob(data.base64, data.mimeType) : new Blob());
     
     const fileName = `${data.user_id}/${Date.now()}_${data.fileName}`;
     const { error } = await supabase.storage
-      .from('meal-photos')
+      .from('meal-images')
       .upload(fileName, blob, {
         contentType: data.mimeType,
         upsert: false
@@ -198,6 +200,17 @@ export class SyncService {
     if (error) {
       throw new Error(`Failed to sync photo: ${error.message}`);
     }
+
+    // Generate and return signed URL
+    const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+      .from('meal-images')
+      .createSignedUrl(fileName, 86400); // 24 hours expiry
+
+    if (signedUrlError) {
+      throw new Error(`Failed to create signed URL: ${signedUrlError.message}`);
+    }
+
+    return signedUrlData.signedUrl;
   }
   
   private async syncUserAction(supabase: SupabaseClient, data: UserActionData): Promise<void> {
@@ -255,7 +268,19 @@ export class SyncService {
     }
   }
   
-  async queuePhotoUpload(photoData: PhotoUploadData): Promise<void> {
+  async queuePhotoUpload(photoData: PhotoUploadData): Promise<string | null> {
+    // If online, upload immediately and return signed URL
+    if (this.isOnline) {
+      try {
+        const supabase = createClient();
+        return await this.syncPhotoUpload(supabase, photoData);
+      } catch (error) {
+        console.error('Failed to upload photo immediately:', error);
+        // Fall through to queue for later
+      }
+    }
+
+    // If offline or immediate upload failed, queue for later
     await getOfflineStorage().store({
       type: 'photo_upload',
       data: photoData
@@ -264,6 +289,8 @@ export class SyncService {
     if (this.isOnline) {
       this.syncNow(); // Try to sync immediately
     }
+
+    return null; // No URL available for offline queuing
   }
   
   async queueUserAction(action: string, payload: Record<string, unknown>, userId: string): Promise<void> {

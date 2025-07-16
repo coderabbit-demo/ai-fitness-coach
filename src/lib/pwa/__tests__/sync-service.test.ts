@@ -356,11 +356,14 @@ describe('SyncService', () => {
       const photoData = {
         fileName: 'meal.jpg',
         base64: 'base64string',
+        mimeType: 'image/jpeg',
         user_id: 'user-1'
       };
       
-      await syncService!.queuePhotoUpload(photoData);
+      const result = await syncService!.queuePhotoUpload(photoData);
       
+      // Should return null when queuing for offline sync
+      expect(result).toBeNull();
       expect(offlineStorage.store).toHaveBeenCalledWith({
         type: 'photo_upload',
         data: photoData

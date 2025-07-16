@@ -68,6 +68,10 @@ CREATE POLICY "Users can update their own nutrition goals"
     ON user_nutrition_goals FOR UPDATE
     USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can delete their own nutrition goals"
+    ON user_nutrition_goals FOR DELETE
+    USING (auth.uid() = user_id);
+
 -- Index
 CREATE INDEX idx_user_nutrition_goals_user_id ON user_nutrition_goals(user_id);
 
