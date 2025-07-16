@@ -64,13 +64,23 @@ export function PWAProvider({ children }: PWAProviderProps) {
 
       // Listen for app update events
       const updateEventHandler = () => {
+        // Show non-intrusive notification without auto-reload
         toast({
-          title: "Update available",
-          description: "A new version is available. Reload to update."
+          title: "Update Available",
+          description: "A new version is ready. Refresh the page when you're ready to update (Ctrl+R or F5)."
         });
-        // Auto-reload after 5 seconds
-        const timeoutId = setTimeout(() => window.location.reload(), 5000);
-        cleanupRef.current.push(() => clearTimeout(timeoutId));
+        
+        // Optionally, add a keyboard shortcut listener for easy reload
+        const handleKeyPress = (e: KeyboardEvent) => {
+          // Allow Ctrl+Shift+R for hard reload when update is available
+          if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+            e.preventDefault();
+            window.location.reload();
+          }
+        };
+        
+        document.addEventListener('keydown', handleKeyPress);
+        cleanupRef.current.push(() => document.removeEventListener('keydown', handleKeyPress));
       };
       window.addEventListener('sw-update-available', updateEventHandler);
       cleanupRef.current.push(() => window.removeEventListener('sw-update-available', updateEventHandler));
