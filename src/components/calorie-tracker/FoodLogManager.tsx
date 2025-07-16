@@ -86,9 +86,17 @@ export function FoodLogManager() {
   const fetchLogs = async () => {
     try {
       const supabase = createClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Error getting user:', userError);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('nutrition_logs')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -112,6 +120,12 @@ export function FoodLogManager() {
   const handleSaveEdit = async (logId: string) => {
     try {
       const supabase = createClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Error getting user:', userError);
+        return;
+      }
       
       // Recalculate totals
       const totalCalories = editValues.food_items?.reduce((sum, item) => sum + item.calories, 0) || 0;
@@ -129,7 +143,8 @@ export function FoodLogManager() {
           total_carbs_g: totalCarbs,
           total_fat_g: totalFat,
         })
-        .eq('id', logId);
+        .eq('id', logId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -155,10 +170,18 @@ export function FoodLogManager() {
 
     try {
       const supabase = createClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('Error getting user:', userError);
+        return;
+      }
+
       const { error } = await supabase
         .from('nutrition_logs')
         .delete()
-        .eq('id', logId);
+        .eq('id', logId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
       fetchLogs();
