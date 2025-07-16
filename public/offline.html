@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Calorie Tracker - Offline</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      max-width: 400px;
+      margin: 1rem;
+    }
+    h1 {
+      color: #333;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      background: #f0f0f0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon svg {
+      width: 40px;
+      height: 40px;
+      fill: #999;
+    }
+    button {
+      background: #0070f3;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0051cc;
+    }
+    .features {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid #eee;
+    }
+    .features h2 {
+      font-size: 1.1rem;
+      color: #555;
+      margin-bottom: 1rem;
+    }
+    .features ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      text-align: left;
+    }
+    .features li {
+      padding: 0.5rem 0;
+      color: #666;
+      display: flex;
+      align-items: center;
+    }
+    .features li:before {
+      content: '✓';
+      color: #0070f3;
+      font-weight: bold;
+      margin-right: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg viewBox="0 0 24 24">
+        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+      </svg>
+    </div>
+    
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Don't worry - your data is safe and will sync when you're back online.</p>
+    
+    <button onclick="window.location.reload()">Try Again</button>
+    
+    <div class="features">
+      <h2>While offline, you can still:</h2>
+      <ul>
+        <li>Take photos of your meals</li>
+        <li>View your recent meal history</li>
+        <li>Access your favorite foods</li>
+        <li>Track calories manually</li>
+      </ul>
+    </div>
+  </div>
+  
+  <script>
+    // Check connection status
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>
