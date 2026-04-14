@@ -9,6 +9,13 @@ import { syncService } from '@/lib/pwa/sync-service';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
 
+/**
+ * Page component that authenticates the user, captures a photo, and queues the photo for upload and processing.
+ *
+ * Authenticated users see an OptimizedCamera to capture a photo; unauthenticated users are redirected to `/login`. While authentication is verified the page shows a loading indicator. When a photo is captured the component optimizes the image, enqueues or uploads it for processing, displays toast notifications about progress and result, and navigates the user back to the dashboard (`/`).
+ *
+ * @returns The QuickPhotoPage React element.
+ */
 export default function QuickPhotoPage() {
   const router = useRouter();
   const { toast } = useToast();

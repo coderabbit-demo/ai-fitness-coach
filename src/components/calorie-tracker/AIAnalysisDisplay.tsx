@@ -35,6 +35,18 @@ interface AIAnalysisProps {
   onCorrect?: (logId: string) => void;
 }
 
+/**
+ * Render a card displaying AI food-analysis results and interactive controls for a given analysis log.
+ *
+ * Displays status (processing / failed / completed), a confidence badge and progress, detected food items,
+ * AI notes, action buttons to reprocess or mark the analysis as correct, and low-confidence tips when applicable.
+ *
+ * @param log - Analysis log object; expected to include `id`, `processing_status`, `confidence_score` (0–1),
+ *   optional `error_message`, optional `notes`, optional `image_url`, and `food_items` (array of items with `name`, `quantity`, and `calories`).
+ * @param onReprocess - Optional callback invoked as `onReprocess(log.id)` when the user requests reprocessing.
+ * @param onCorrect - Optional callback invoked as `onCorrect(log.id)` when the user marks the analysis as correct.
+ * @returns A JSX element representing the AI analysis card for the provided log.
+ */
 export function AIAnalysisDisplay({ log, onReprocess, onCorrect }: AIAnalysisProps) {
   const getConfidenceColor = (score: number) => {
     if (score >= 0.8) return 'bg-green-500';

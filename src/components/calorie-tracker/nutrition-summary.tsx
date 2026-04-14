@@ -20,6 +20,14 @@ interface NutritionSummaryProps {
   data: NutritionLog[]
 }
 
+/**
+ * Renders a nutrition dashboard summarizing the provided meal logs.
+ *
+ * Displays total calories and macronutrient totals against fixed daily targets, per-nutrient progress bars, remaining calories, a meal count, and achievement badges for meeting progress thresholds or data quality.
+ *
+ * @param data - Array of nutrition log entries for the day. Numeric totals on each log may be `number` or `null`; `null` values are treated as zero when aggregating.
+ * @returns The rendered JSX element containing the nutrition summary UI. 
+ */
 export function NutritionSummary({ data }: NutritionSummaryProps) {
   // Calculate totals
   const totals = data.reduce((acc, log) => ({

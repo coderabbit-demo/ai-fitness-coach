@@ -101,11 +101,9 @@ const WEIGHT_UNIT_OPTIONS = [
 ] as const
 
 /**
- * Renders the user's profile page with capabilities to view, edit, and save personal, physical, and preference information.
+ * Render the user profile page with controls to view, edit, and save personal, physical, and preference information.
  *
- * Fetches the authenticated user's profile from the backend, manages form state for editing, and handles unit conversions for weight. Provides validation, displays operation status messages, and redirects to login if unauthenticated. Supports multi-select fields for goals, conditions, and dietary restrictions, and visually organizes profile data into logical sections.
- *
- * @returns The profile page React component.
+ * @returns A React element representing the profile page UI.
  */
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)

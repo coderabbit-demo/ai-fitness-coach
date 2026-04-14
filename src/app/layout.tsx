@@ -47,6 +47,12 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+/**
+ * Application root layout that provides global HTML structure, font classes, mobile web app meta tags, and top-level context providers.
+ *
+ * @param children - React nodes rendered inside the `PWAProvider` and `ToastProvider`
+ * @returns The root HTML element containing `<head>` and `<body>` with the provided children wrapped by the global providers
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

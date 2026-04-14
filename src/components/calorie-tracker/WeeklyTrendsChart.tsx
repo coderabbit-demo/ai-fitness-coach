@@ -20,6 +20,16 @@ interface DayData {
   dayLabel: string;
 }
 
+/**
+ * Render a weekly nutrition trends card with a selectable metric and a 7-day line chart.
+ *
+ * Fetches the last seven days of nutrition summary data for the given user, fills missing days with zeros,
+ * and lets the user toggle between calories, protein, carbs, and fat. Displays the selected metric as a
+ * responsive line chart and shows the average daily calories for the week.
+ *
+ * @param userId - The user ID whose weekly nutrition summaries are displayed
+ * @returns A JSX element representing the weekly trends card
+ */
 export function WeeklyTrendsChart({ userId }: WeeklyTrendsProps) {
   const [weekData, setWeekData] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);

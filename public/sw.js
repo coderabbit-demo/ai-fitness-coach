@@ -41,7 +41,14 @@ const CACHE_EXPIRATION = {
   STATIC: 7 * 24 * 60 * 60 * 1000 // 7 days for static assets
 };
 
-// Check if cached response is expired
+/**
+ * Determine whether a cached Response has expired according to its `sw-cached-date` header.
+ * 
+ * If `response` is falsy or lacks the `sw-cached-date` header, it is considered expired.
+ * @param {Response|null|undefined} response - The cached response to check.
+ * @param {number} maxAge - Maximum allowed age in milliseconds.
+ * @returns {boolean} `true` if the cached response is expired or missing its timestamp, `false` otherwise.
+ */
 function isCacheExpired(response, maxAge) {
   if (!response) return true;
   
@@ -52,7 +59,11 @@ function isCacheExpired(response, maxAge) {
   return age > maxAge;
 }
 
-// Add timestamp to response before caching
+/**
+ * Create a new Response cloned from the given response and add a `sw-cached-date` header with the current timestamp.
+ * @param {Response} response - The original response to clone and timestamp.
+ * @returns {Response} A Response identical to the original but with a `sw-cached-date` header set to `Date.now().toString()`.
+ */
 function addTimestampToResponse(response) {
   const modifiedResponse = new Response(response.body, {
     status: response.status,
@@ -207,7 +218,12 @@ self.addEventListener('notificationclick', (event) => {
   }
 });
 
-// Helper function to sync offline meals
+/**
+ * Synchronizes locally stored offline meals with the server and removes successfully synced entries from IndexedDB.
+ *
+ * Attempts to POST each meal's `data` to `/api/nutrition-logs`; when a POST succeeds the corresponding record is deleted from the `offline-meals` object store.
+ * Errors for individual meal uploads and for the overall sync process are logged to the console.
+ */
 async function syncOfflineMeals() {
   try {
     // Get offline meals from IndexedDB
@@ -242,7 +258,12 @@ async function syncOfflineMeals() {
   }
 }
 
-// IndexedDB helper
+/**
+ * Open (or create) the IndexedDB database 'ai-calorie-tracker' (version 1) and ensure the 'offline-meals' object store exists.
+ *
+ * During an upgrade, creates an object store named 'offline-meals' with keyPath `'id'` if it does not already exist.
+ * @returns {Promise<IDBDatabase>} Resolves with the opened IDBDatabase instance. Rejects with the underlying IndexedDB error if opening fails.
+ */
 function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('ai-calorie-tracker', 1);

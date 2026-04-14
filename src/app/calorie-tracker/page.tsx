@@ -15,12 +15,17 @@ interface CalorieTrackerPageProps {
 }
 
 /**
- * Renders the calorie tracker page, displaying a comprehensive nutrition dashboard for authenticated users.
+ * Renders the calorie tracker page and a conditional meal-logging interface for authenticated users.
  *
- * Shows daily nutrition summary, weekly trends, recent meals, and quick actions. Conditionally displays 
- * a meal logging interface or the main dashboard based on search parameters.
+ * Displays a daily nutrition summary, weekly trends chart, recent meals, and quick actions when in the
+ * main dashboard view. Redirects to `/login` if the request is unauthenticated. Honors a `success`
+ * indicator to show a confirmation alert and a `view` parameter to switch between the dashboard and
+ * the meal logging interface.
  *
- * @param searchParams - Optional search parameters, including `success` flag and `view` parameter
+ * @param searchParams - A promise resolving to optional query parameters. Recognized keys:
+ *   - `success`: when `"true"`, shows a success confirmation
+ *   - `view`: `"add"` to show the meal logging UI; defaults to `"dashboard"` for the main dashboard
+ * @returns A React element containing either the meal logging view or the main dashboard layout
  */
 export default async function CalorieTrackerPage({ searchParams }: CalorieTrackerPageProps) {
   const supabase = await createClient()
