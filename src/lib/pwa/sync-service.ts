@@ -308,7 +308,13 @@ export class SyncService {
 // Singleton instance - only create in browser environment
 export const syncService: SyncService | null = typeof window !== 'undefined' ? new SyncService() : null;
 
-// Factory function for safe access to the sync service instance
+/**
+ * Return the singleton SyncService instance created for browser environments.
+ *
+ * @returns The initialized SyncService singleton.
+ * @throws Error if called outside a browser environment.
+ * @throws Error if the SyncService singleton has not been initialized.
+ */
 export function getSyncService(): SyncService {
   if (typeof window === 'undefined') {
     throw new Error('SyncService is only available in browser environment');

@@ -11,6 +11,13 @@ import { Camera, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 
+/**
+ * Render the authenticated user's dashboard populated with profile data, quick stats, charts, and recent meals.
+ *
+ * Fetches the current user, their profile, and up to five recent nutrition logs to populate the UI; displays a greeting, today's calories, current weight and target, fitness goals, three charts (weight progress, calorie intake, mood/sleep), and a recent meals list with a placeholder when no meals are present.
+ *
+ * @returns The React element for the dashboard UI.
+ */
 export default async function AppDashboard() {
   const supabase = await createClient()
   

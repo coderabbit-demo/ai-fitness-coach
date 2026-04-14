@@ -37,6 +37,14 @@ interface MealLogProps {
   data: NutritionLog[]
 }
 
+/**
+ * Renders a list of meal nutrition logs as cards with images, nutrient totals, confidence badges, notes, and delete actions.
+ *
+ * Renders an empty-state message when `data` is empty.
+ *
+ * @param data - Array of nutrition log entries to display (each entry provides food items, timestamps, nutrition totals, optional image, confidence score, and notes)
+ * @returns The component's rendered UI tree for the meal log list or the empty-state message when no entries exist
+ */
 export function MealLog({ data }: MealLogProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 

@@ -36,6 +36,14 @@ interface FoodLog {
   processing_status: string;
 }
 
+/**
+ * Render a user interface for viewing, filtering, editing, and deleting nutrition logs stored in Supabase.
+ *
+ * The component fetches the current user's recent food logs, provides search and date filters, allows inline
+ * editing of food items and notes (recalculating totals before persisting), and supports deletion with confirmation.
+ *
+ * @returns A React element containing the food log management UI.
+ */
 export function FoodLogManager() {
   const [logs, setLogs] = useState<FoodLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<FoodLog[]>([]);

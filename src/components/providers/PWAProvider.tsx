@@ -20,6 +20,13 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
+/**
+ * Initializes PWA features (offline storage, service worker, background sync) and registers UI handlers for install/update flows while rendering `children`.
+ *
+ * Sets up event listeners for `beforeinstallprompt`, `appinstalled`, and a custom `sw-update-available` event, schedules associated prompts/notifications, and ensures all timers and listeners are cleaned up on unmount.
+ *
+ * @returns A React element that wraps and renders the provided `children`.
+ */
 export function PWAProvider({ children }: PWAProviderProps) {
   const { toast } = useToast();
   const cleanupRef = useRef<(() => void)[]>([]);

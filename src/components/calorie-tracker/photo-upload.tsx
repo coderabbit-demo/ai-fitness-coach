@@ -10,6 +10,16 @@ import { Upload, X, Loader2 } from 'lucide-react'
 import { logError } from '@/lib/logger'
 import Image from 'next/image'
 
+/**
+ * Renders a photo upload UI for selecting, previewing, and uploading meal images.
+ *
+ * The component validates that the selected file is an image under 5MB, shows a preview,
+ * uploads the image to Supabase Storage under a user-specific path, generates a signed URL,
+ * and inserts a corresponding `nutrition_logs` record (with placeholder fields for later AI processing).
+ * It displays success/error messages, disables controls while uploading, and resets the form after a successful upload.
+ *
+ * @returns The React element for the PhotoUpload component UI.
+ */
 export function PhotoUpload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)

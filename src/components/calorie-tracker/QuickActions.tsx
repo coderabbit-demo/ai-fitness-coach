@@ -4,6 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Camera, Plus, Settings, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+/**
+ * Renders a horizontal set of quick-action buttons for the calorie tracker: Quick Photo, Add Meal, View Logs, and Settings.
+ *
+ * Each button navigates to the appropriate calorie-tracker route when activated.
+ *
+ * @returns The rendered button group as a JSX element.
+ */
 export function QuickActions() {
   const router = useRouter();
 

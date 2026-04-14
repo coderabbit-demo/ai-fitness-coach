@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+/**
+ * Retrieve the authenticated user's nutrition goals.
+ *
+ * Attempts to authenticate the request and fetch the single `user_nutrition_goals`
+ * row for the authenticated user.
+ *
+ * @returns A NextResponse containing `{ goals }` where `goals` is the user's nutrition goals row or `null` if none exists. Responds with HTTP 401 and `{ error: 'Unauthorized' }` when the request is unauthenticated, or HTTP 500 and `{ error: 'Internal server error' }` on unexpected failures.
+ */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -26,6 +34,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * Upserts the authenticated user's nutrition goals and returns the stored record.
+ *
+ * Validates required numeric fields (calories, protein, carbs, fat, fiber) and optional
+ * `activity_level` and `weight_goal` values before performing the upsert.
+ *
+ * @returns A JSON NextResponse containing `{ goals }` on success. On error returns a JSON `{ error: string }` with status `400` for validation failures, `401` for unauthorized requests, or `500` for internal server errors.
+ */
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();

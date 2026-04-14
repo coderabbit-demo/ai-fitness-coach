@@ -25,6 +25,14 @@ interface AppNavigationProps {
   user: User
 }
 
+/**
+ * Render the top navigation bar for an authenticated user, showing primary app links and a user dropdown that includes settings and sign-out.
+ *
+ * The sign-out control logs logout attempts and successes using the provided user's `id`, shows a loading state while signing out, and redirects to the root path on success.
+ *
+ * @param user - Supabase user object used to display `user.email` and provide `user.id` for authentication event logging
+ * @returns The navigation bar JSX element containing brand link, primary navigation links, and a user dropdown menu
+ */
 export function AppNavigation({ user }: AppNavigationProps) {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()

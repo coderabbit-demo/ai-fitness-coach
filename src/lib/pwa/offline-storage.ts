@@ -353,7 +353,13 @@ export class OfflineStorage {
 // Singleton instance - only create in browser environment
 export const offlineStorage: OfflineStorage | null = typeof window !== 'undefined' ? new OfflineStorage() : null;
 
-// Factory function for safe access to the storage instance
+/**
+ * Returns the initialized singleton OfflineStorage instance for browser environments.
+ *
+ * @returns The singleton `OfflineStorage` instance.
+ * @throws Error if called outside a browser environment.
+ * @throws Error if the `OfflineStorage` instance has not been initialized.
+ */
 export function getOfflineStorage(): OfflineStorage {
   if (typeof window === 'undefined') {
     throw new Error('OfflineStorage is only available in browser environment');

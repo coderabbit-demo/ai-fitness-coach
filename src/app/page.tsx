@@ -7,9 +7,13 @@ import { Brain, Camera, Scale, Heart, Moon, TrendingUp, ArrowRight, Sparkles, Ta
 import { WeightProgressChart, CalorieIntakeChart, MoodSleepChart } from "@/components/dashboard-preview"
 
 /**
- * Displays the main landing page for the AI Fitness Coach app, featuring navigation, hero section with dashboard previews, feature highlights, value proposition, call to action, and footer.
+ * Render the marketing landing page for the AI Fitness Coach app.
  *
- * Presents a multi-section, responsive layout introducing the app’s capabilities, benefits, and community focus using custom UI components, charts, and icons.
+ * Composes a responsive, multi-section layout that includes a sticky navigation bar, a hero section with an
+ * overlaid dashboard preview (charts), a features grid, a value-proposition section, a centered call-to-action,
+ * and a multi-column footer.
+ *
+ * @returns The JSX element representing the complete landing page layout.
  */
 export default function HomePage() {
   return (

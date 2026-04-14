@@ -22,6 +22,15 @@ interface DailySummaryProps {
   } | null;
 }
 
+/**
+ * Renders a card showing today's calorie and macronutrient progress against daily goals.
+ *
+ * Displays calories consumed vs. goal, meals logged, a progress bar and an indicator for remaining or over calories, and a two-column grid with each macro's consumed amount, progress bar, and goal.
+ *
+ * @param summary - Optional totals for the current day (total_calories, total_protein_g, total_carbs_g, total_fat_g, total_fiber_g, meal_count). Missing values default to 0.
+ * @param goals - Optional daily goals (daily_calorie_goal, daily_protein_goal_g, daily_carbs_goal_g, daily_fat_goal_g, daily_fiber_goal_g). Defaults: calories 2000, protein 150g, carbs 200g, fat 70g, fiber 25g.
+ * @returns The JSX element for the daily nutrition summary card.
+ */
 export function DailyCalorieSummary({ summary, goals }: DailySummaryProps) {
   const caloriesConsumed = summary?.total_calories || 0;
   const calorieGoal = goals?.daily_calorie_goal || 2000;

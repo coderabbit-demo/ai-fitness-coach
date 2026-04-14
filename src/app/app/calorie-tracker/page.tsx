@@ -5,6 +5,14 @@ import { MealLog } from '@/components/calorie-tracker/meal-log'
 import { NutritionSummary } from '@/components/calorie-tracker/nutrition-summary'
 import { Camera, Target, TrendingUp } from 'lucide-react'
 
+/**
+ * Server component that fetches the authenticated user's nutrition logs from Supabase and renders the Calorie Tracker UI.
+ *
+ * The rendered layout includes a photo upload section for logging new meals, a card showing today's nutrition summary,
+ * and a card displaying recent meal entries.
+ *
+ * @returns A JSX element containing the calorie tracker layout with photo upload, today's nutrition summary, and recent meals.
+ */
 export default async function CalorieTracker() {
   const supabase = await createClient()
   

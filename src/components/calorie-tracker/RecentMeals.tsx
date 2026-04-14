@@ -26,6 +26,17 @@ interface RecentMealsProps {
   meals: Meal[];
 }
 
+/**
+ * Render a card showing recent meal entries or an empty-state message.
+ *
+ * Renders a header and either a message when no meals exist or a list of recent meals.
+ * Each meal row shows an optional image, up to two food item names (with a "+N more" indicator when applicable),
+ * a formatted time, a processing/status badge (including a confidence badge for completed meals), total calories,
+ * and an action button to navigate to the meal detail page. A footer button navigates to the full food log.
+ *
+ * @param meals - Array of meal objects to display in the recent meals card
+ * @returns The Recent Meals card element with list or empty state
+ */
 export function RecentMeals({ meals }: RecentMealsProps) {
   const router = useRouter();
 

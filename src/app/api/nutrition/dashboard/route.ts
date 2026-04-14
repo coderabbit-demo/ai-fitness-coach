@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { format, subDays } from 'date-fns';
 
+/**
+ * Builds the nutrition dashboard payload for the authenticated user for a configurable date range.
+ *
+ * Validates the optional `days` query parameter (defaults to 7, must be an integer between 1 and 30), authenticates the request, retrieves daily nutrition summaries for the computed date range, the user's nutrition goals, and up to 10 most recent completed meal logs, then computes simple analytics (totalCalories, avgCalories, mealCount, daysTracked).
+ *
+ * @param request - Incoming NextRequest; may include `days` query parameter to set the number of days to include (1–30).
+ * @returns A JSON object containing `dailySummaries`, `userGoals`, `recentMeals`, and `analytics` with `totalCalories`, `avgCalories`, `mealCount`, and `daysTracked`. Error responses: 400 for invalid `days`, 401 for unauthorized requests, 500 for unexpected server errors.
+ */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
