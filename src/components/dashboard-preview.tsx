@@ -1,26 +1,27 @@
 "use client"
 
-import { Line, LineChart, Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from "recharts"
+import { Line, LineChart, Bar, BarChart, ReferenceLine, XAxis, YAxis, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { TrendingDown, Target, Moon, Smile } from "lucide-react"
 
 // Dummy data for weight progress
+const targetWeight = 175
 const weightData = [
-  { date: "Nov 1", weight: 195, target: 175 },
-  { date: "Nov 8", weight: 193, target: 175 },
-  { date: "Nov 15", weight: 191, target: 175 },
-  { date: "Nov 22", weight: 189, target: 175 },
-  { date: "Nov 29", weight: 187, target: 175 },
-  { date: "Dec 6", weight: 185, target: 175 },
-  { date: "Dec 13", weight: 183, target: 175 },
-  { date: "Dec 20", weight: 181, target: 175 },
-  { date: "Dec 27", weight: 179, target: 175 },
-  { date: "Jan 3", weight: 177, target: 175 },
-  { date: "Jan 10", weight: 176, target: 175 },
-  { date: "Jan 17", weight: 175, target: 175 },
-  { date: "Jan 24", weight: 174, target: 175 },
-  { date: "Jan 31", weight: 173, target: 175 },
+  { date: "Nov 1", weight: 195 },
+  { date: "Nov 8", weight: 193 },
+  { date: "Nov 15", weight: 191 },
+  { date: "Nov 22", weight: 189 },
+  { date: "Nov 29", weight: 187 },
+  { date: "Dec 6", weight: 185 },
+  { date: "Dec 13", weight: 183 },
+  { date: "Dec 20", weight: 181 },
+  { date: "Dec 27", weight: 179 },
+  { date: "Jan 3", weight: 177 },
+  { date: "Jan 10", weight: 176 },
+  { date: "Jan 17", weight: 175 },
+  { date: "Jan 24", weight: 174 },
+  { date: "Jan 31", weight: 173 },
 ]
 
 // Dummy data for calorie intake
@@ -82,26 +83,27 @@ export function WeightProgressChart() {
             <LineChart data={weightData}>
               <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
               <YAxis
-                domain={["dataMin - 2", "dataMax + 2"]}
+                domain={[
+                  (dataMin: number) => Math.min(dataMin, targetWeight) - 2,
+                  (dataMax: number) => Math.max(dataMax, targetWeight) + 2,
+                ]}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontSize: 12 }}
               />
               <ChartTooltip content={<ChartTooltipContent />} />
+              <ReferenceLine
+                y={targetWeight}
+                stroke="var(--color-target)"
+                strokeWidth={2}
+                strokeDasharray="6 6"
+              />
               <Line
                 type="monotone"
                 dataKey="weight"
                 stroke="var(--color-weight)"
                 strokeWidth={3}
                 dot={{ fill: "var(--color-weight)", strokeWidth: 2, r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="target"
-                stroke="var(--color-target)"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -110,7 +112,7 @@ export function WeightProgressChart() {
           <span>Current: 173 lbs</span>
           <span className="flex items-center">
             <Target className="w-3 h-3 mr-1" />
-            Target: 175 lbs
+            Target: {targetWeight} lbs
           </span>
         </div>
       </CardContent>
