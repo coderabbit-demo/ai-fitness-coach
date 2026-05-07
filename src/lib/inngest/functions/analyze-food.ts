@@ -1,5 +1,5 @@
 import { getInngestClient } from '@/lib/inngest/client';
-import { NutritionAnalyzer } from '@/lib/ai/nutrition-analyzer';
+import { NutritionAnalyzer, NutritionAnalysisError } from '@/lib/ai/nutrition-analyzer';
 import { createClient } from '@/utils/supabase/server';
 import logger from '@/lib/logger';
 
@@ -15,7 +15,7 @@ export const analyzeFoodImage = getInngestClient().createFunction(
       if (!response.ok) {
         throw new Error(`Failed to download image: ${response.statusText}`);
       }
-      
+
       const buffer = await response.arrayBuffer();
       return Buffer.from(buffer).toString('base64');
     });
@@ -26,6 +26,10 @@ export const analyzeFoodImage = getInngestClient().createFunction(
         const analyzer = NutritionAnalyzer.getInstance();
         return await analyzer.analyzeImage(imageBase64);
       } catch (error) {
+        const userMessage = error instanceof NutritionAnalysisError
+          ? error.userMessage
+          : 'We had trouble analyzing your food image. Please try again.';
+
         // Send error event for monitoring
         await step.sendEvent('analysis-error', {
           name: 'food/analysis.failed',
@@ -34,7 +38,9 @@ export const analyzeFoodImage = getInngestClient().createFunction(
             userId,
             error: {
               message: error instanceof Error ? error.message : 'Unknown error',
+              userMessage,
               stack: error instanceof Error ? error.stack : undefined,
+              providerFailures: error instanceof NutritionAnalysisError ? error.providerFailures : undefined,
             },
             provider: 'unknown',
           },
@@ -46,7 +52,7 @@ export const analyzeFoodImage = getInngestClient().createFunction(
     // Step 3: Update database with results
     await step.run('update-database', async () => {
       const supabase = await createClient();
-      
+
       const { error } = await supabase
         .from('nutrition_logs')
         .update({
@@ -90,4 +96,4 @@ export const analyzeFoodImage = getInngestClient().createFunction(
 
     return { success: true, analysis };
   }
-); 
+);

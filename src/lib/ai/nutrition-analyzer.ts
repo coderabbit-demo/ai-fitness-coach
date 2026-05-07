@@ -1,8 +1,27 @@
-import { analyzeImageWithOpenAI, NutritionAnalysis } from './openai-vision';
-import { analyzeImageWithGoogle } from './google-vision';
+import { NutritionAnalysis } from './openai-vision';
+import * as openAIVision from './openai-vision';
+import * as googleVision from './google-vision';
 import logger from '@/lib/logger';
 
 export type AIProvider = 'openai' | 'google';
+
+interface ProviderFailure {
+  provider: AIProvider;
+  message: string;
+  skipped?: boolean;
+}
+
+export class NutritionAnalysisError extends Error {
+  readonly providerFailures: ProviderFailure[];
+  readonly userMessage: string;
+
+  constructor(providerFailures: ProviderFailure[]) {
+    super('All AI providers failed to analyze the image');
+    this.name = 'NutritionAnalysisError';
+    this.providerFailures = providerFailures;
+    this.userMessage = 'We could not analyze this meal photo because our AI providers are temporarily unavailable. Please try again in a few minutes.';
+  }
+}
 
 export class NutritionAnalyzer {
   private static instance: NutritionAnalyzer;
@@ -18,16 +37,31 @@ export class NutritionAnalyzer {
 
   async analyzeImage(imageBase64: string): Promise<NutritionAnalysis> {
     const providers: AIProvider[] = ['openai', 'google'];
-    
+    const providerFailures: ProviderFailure[] = [];
+
     for (const provider of providers) {
+      if (!this.isProviderConfigured(provider)) {
+        const message = `${provider} provider is not configured`;
+        providerFailures.push({ provider, message, skipped: true });
+        logger.warn('Skipping unconfigured AI provider', { provider });
+        continue;
+      }
+
       if (this.shouldSkipProvider(provider)) {
+        const message = `${provider} provider is temporarily disabled after repeated failures`;
+        providerFailures.push({ provider, message, skipped: true });
+        logger.warn('Skipping AI provider after repeated failures', { provider });
         continue;
       }
 
       try {
         const analysis = await this.callProvider(provider, imageBase64);
+        if (!this.isValidAnalysis(analysis)) {
+          throw new Error(`${provider} returned an invalid nutrition analysis`);
+        }
+
         this.resetFailureCount(provider);
-        
+
         logger.info('Nutrition analysis successful', {
           provider,
           totalCalories: analysis.totalCalories,
@@ -37,22 +71,39 @@ export class NutritionAnalyzer {
         return analysis;
       } catch (error) {
         this.incrementFailureCount(provider);
+        const message = error instanceof Error ? error.message : 'Unknown provider error';
+        providerFailures.push({ provider, message });
         logger.error('Nutrition analysis failed', { provider, error });
       }
     }
 
-    throw new Error('All AI providers failed to analyze the image');
+    throw new NutritionAnalysisError(providerFailures);
   }
 
   private async callProvider(provider: AIProvider, imageBase64: string): Promise<NutritionAnalysis> {
     switch (provider) {
       case 'openai':
-        return await analyzeImageWithOpenAI(imageBase64);
+        return await openAIVision.analyzeImageWithOpenAI(imageBase64);
       case 'google':
-        return await analyzeImageWithGoogle(imageBase64);
+        return await googleVision.analyzeImageWithGoogle(imageBase64);
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
+  }
+
+  private isProviderConfigured(provider: AIProvider): boolean {
+    switch (provider) {
+      case 'openai':
+        return openAIVision.isOpenAIConfigured?.() ?? true;
+      case 'google':
+        return googleVision.isGoogleVisionConfigured?.() ?? true;
+      default:
+        return false;
+    }
+  }
+
+  private isValidAnalysis(analysis: NutritionAnalysis | null | undefined): analysis is NutritionAnalysis {
+    return !!analysis && Array.isArray(analysis.foodItems) && typeof analysis.totalCalories === 'number';
   }
 
   private shouldSkipProvider(provider: AIProvider): boolean {
@@ -66,4 +117,4 @@ export class NutritionAnalyzer {
   private resetFailureCount(provider: AIProvider): void {
     this.failureCount.set(provider, 0);
   }
-} 
+}
