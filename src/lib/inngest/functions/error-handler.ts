@@ -11,9 +11,12 @@ export const handleAnalysisError = getInngestClient().createFunction(
     if (!event.data || typeof event.data !== 'object') {
       throw new Error('Invalid event data format');
     }
-    
+
     const { logId, userId, error, provider } = event.data;
-    
+    const userMessage = typeof error.userMessage === 'string'
+      ? error.userMessage
+      : 'We had trouble analyzing your food image. Please try again.';
+
     // Validate required fields
     if (!logId || !userId || !error || !provider) {
       throw new Error('Missing required fields in event data');
@@ -30,10 +33,10 @@ export const handleAnalysisError = getInngestClient().createFunction(
           timestamp: new Date(),
         });
       } catch (monitoringError) {
-        logger.error('Failed to log error to monitoring system', { 
-          monitoringError, 
-          logId, 
-          userId 
+        logger.error('Failed to log error to monitoring system', {
+          monitoringError,
+          logId,
+          userId
         });
         // Don't throw here - continue with other steps
       }
@@ -42,12 +45,12 @@ export const handleAnalysisError = getInngestClient().createFunction(
     // Update database with error status
     await step.run('update-database', async () => {
       const supabase = await createClient();
-      
+
       const { error: updateError } = await supabase
         .from('nutrition_logs')
         .update({
           processing_status: 'failed',
-          error_message: error.message,
+          error_message: userMessage,
         })
         .eq('id', logId);
 
@@ -63,8 +66,8 @@ export const handleAnalysisError = getInngestClient().createFunction(
       data: {
         userId,
         logId,
-        message: 'We had trouble analyzing your food image. Please try again.',
+        message: userMessage,
       },
     });
   }
-); 
+);

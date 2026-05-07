@@ -5,37 +5,47 @@ import { NutritionAnalysis } from './openai-vision';
 // Validate required environment variables
 const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
+const apiKey = process.env.GOOGLE_VISION_API_KEY;
 
 // Only initialize if environment variables are available (not during build)
 let client: ImageAnnotatorClient | null = null;
 
-if (credentials && projectId) {
+if (apiKey) {
+  client = new ImageAnnotatorClient({ apiKey });
+  logger.info('Google Vision client initialized successfully with API key');
+} else if (credentials && projectId) {
   client = new ImageAnnotatorClient({
     keyFilename: credentials,
-    projectId: projectId,
+    projectId,
   });
   logger.info('Google Vision client initialized successfully');
 } else {
   const missingVars = [];
+  if (!apiKey) missingVars.push('GOOGLE_VISION_API_KEY');
   if (!credentials) missingVars.push('GOOGLE_APPLICATION_CREDENTIALS');
   if (!projectId) missingVars.push('GOOGLE_CLOUD_PROJECT_ID');
-  logger.warn(`Google Vision client not initialized - missing environment variables: ${missingVars.join(', ')}`);
+  logger.warn(`Google Vision client not initialized - missing either GOOGLE_VISION_API_KEY or service account variables: ${missingVars.join(', ')}`);
 }
 
 // Log initialization status for debugging
 if (process.env.NODE_ENV !== 'production') {
-  logger.info('Google Vision client initialization status:', { 
-    initialized: !!client, 
+  logger.info('Google Vision client initialization status:', {
+    initialized: !!client,
+    hasApiKey: !!apiKey,
     hasCredentials: !!credentials,
     hasProjectId: !!projectId
   });
 }
 
+export function isGoogleVisionConfigured(): boolean {
+  return !!client;
+}
+
 // Helper function to get the client with proper error handling
 function getGoogleVisionClient(): ImageAnnotatorClient {
   if (!client) {
-    logger.error('Attempted to use Google Vision client but it is not initialized - GOOGLE_APPLICATION_CREDENTIALS and GOOGLE_CLOUD_PROJECT_ID environment variables are required');
-    throw new Error('GOOGLE_APPLICATION_CREDENTIALS and GOOGLE_CLOUD_PROJECT_ID environment variables are required');
+    logger.error('Attempted to use Google Vision client but it is not initialized - GOOGLE_VISION_API_KEY or GOOGLE_APPLICATION_CREDENTIALS and GOOGLE_CLOUD_PROJECT_ID are required');
+    throw new Error('Google Vision fallback is not configured');
   }
   return client;
 }
@@ -55,7 +65,7 @@ export async function analyzeImageWithGoogle(imageBase64: string): Promise<Nutri
     if (!visionClient.objectLocalization) {
       throw new Error('Google Vision client not properly initialized');
     }
-    
+
     const [result] = await visionClient.objectLocalization({
       image: {
         content: imageBase64,
@@ -63,8 +73,8 @@ export async function analyzeImageWithGoogle(imageBase64: string): Promise<Nutri
     });
 
     const objects = result.localizedObjectAnnotations || [];
-    const foodObjects = objects.filter(obj => 
-      obj.name?.toLowerCase().includes('food') || 
+    const foodObjects = objects.filter(obj =>
+      obj.name?.toLowerCase().includes('food') ||
       obj.name?.toLowerCase().includes('fruit') ||
       obj.name?.toLowerCase().includes('vegetable')
     );
@@ -72,7 +82,7 @@ export async function analyzeImageWithGoogle(imageBase64: string): Promise<Nutri
     // Use detected objects to create nutrition analysis
     // This would require a food database lookup or additional AI processing
     const analysis = await processFoodObjects(foodObjects);
-    
+
     logger.info('Google Vision analysis completed', {
       objectsDetected: objects.length,
       foodObjectsDetected: foodObjects.length,
@@ -115,4 +125,4 @@ async function processFoodObjects(objects: Array<{ name?: string | null }>): Pro
     confidenceScore: 0.6, // Lower confidence for Google fallback
     analysisNotes: 'Analysis based on object detection. Manual verification recommended.',
   };
-} 
+}

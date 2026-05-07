@@ -13,7 +13,7 @@ import logger from '@/lib/logger';
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
+
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -100,6 +100,14 @@ export async function POST(request: NextRequest) {
       logger.info('AI analysis triggered for nutrition log', { logId: logData.id });
     } else {
       logger.error('Cannot trigger AI analysis - Inngest client not available (missing INNGEST_EVENT_KEY)', { logId: logData.id });
+      await supabase
+        .from('nutrition_logs')
+        .update({
+          processing_status: 'failed',
+          error_message: 'Meal analysis is temporarily unavailable. Please try again later.',
+        })
+        .eq('id', logData.id)
+        .eq('user_id', user.id);
     }
 
     logger.info('Image uploaded and processing started', {
@@ -118,4 +126,4 @@ export async function POST(request: NextRequest) {
     logger.error('Upload API error', { error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-} 
+}

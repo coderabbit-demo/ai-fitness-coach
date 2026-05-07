@@ -20,10 +20,14 @@ if (apiKey) {
 
 // Log initialization status for debugging
 if (process.env.NODE_ENV !== 'production') {
-  logger.info('OpenAI client initialization status:', { 
-    initialized: !!openai, 
-    hasApiKey: !!apiKey 
+  logger.info('OpenAI client initialization status:', {
+    initialized: !!openai,
+    hasApiKey: !!apiKey
   });
+}
+
+export function isOpenAIConfigured(): boolean {
+  return !!openai;
 }
 
 // Helper function to get the OpenAI client with proper error handling
@@ -94,7 +98,7 @@ export async function analyzeImageWithOpenAI(imageBase64: string): Promise<Nutri
                 "confidenceScore": number (0-1),
                 "analysisNotes": "any additional observations"
               }
-              
+
               Guidelines:
               - Provide realistic portion estimates
               - If uncertain, provide ranges and note in analysisNotes
@@ -130,7 +134,7 @@ export async function analyzeImageWithOpenAI(imageBase64: string): Promise<Nutri
       });
       throw new Error('Invalid JSON response from OpenAI');
     }
-    
+
     logger.info('OpenAI analysis completed', {
       totalCalories: analysis.totalCalories,
       confidenceScore: analysis.confidenceScore,
@@ -142,4 +146,4 @@ export async function analyzeImageWithOpenAI(imageBase64: string): Promise<Nutri
     logger.error('OpenAI Vision analysis failed', { error });
     throw error;
   }
-} 
+}
