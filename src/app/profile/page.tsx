@@ -100,6 +100,17 @@ const WEIGHT_UNIT_OPTIONS = [
   { value: "lb", label: "Pounds (lb)" },
 ] as const
 
+function getBMIInfo(weightKg: number, heightCm: number) {
+  const heightM = heightCm / 100
+  const bmi = weightKg / (heightM * heightM)
+  const rounded = Math.round(bmi * 10) / 10
+
+  if (bmi < 18.5) return { value: rounded, label: "Underweight", color: "text-blue-600", bg: "bg-blue-50 border-blue-200" }
+  if (bmi < 25) return { value: rounded, label: "Normal weight", color: "text-green-600", bg: "bg-green-50 border-green-200" }
+  if (bmi < 30) return { value: rounded, label: "Overweight", color: "text-amber-600", bg: "bg-amber-50 border-amber-200" }
+  return { value: rounded, label: "Obese", color: "text-red-600", bg: "bg-red-50 border-red-200" }
+}
+
 /**
  * Renders the user's profile page with capabilities to view, edit, and save personal, physical, and preference information.
  *
@@ -522,6 +533,27 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* BMI Indicator */}
+          {profile?.weight_kg && profile.weight_kg > 0 && profile?.height_cm && profile.height_cm > 0 && (() => {
+            const bmi = getBMIInfo(profile.weight_kg!, profile.height_cm!)
+            return (
+              <Card className={`border ${bmi.bg}`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="w-5 h-5" />
+                    BMI
+                  </CardTitle>
+                  <CardDescription>Body Mass Index</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className={`text-4xl font-bold ${bmi.color}`}>{bmi.value}</div>
+                  <Badge className={`${bmi.color} border bg-transparent`} variant="outline">{bmi.label}</Badge>
+                  <p className="text-xs text-slate-500">Based on your height and weight from your profile</p>
+                </CardContent>
+              </Card>
+            )
+          })()}
 
           {/* Fitness Goals */}
           <Card>
