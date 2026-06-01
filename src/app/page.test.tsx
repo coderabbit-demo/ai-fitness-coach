@@ -31,7 +31,6 @@ jest.mock('next/link', () => ({
 jest.mock('next/image', () => ({
   __esModule: true,
   default: (props: any) => (
-    // eslint-disable-next-line @next/next/no-img-element
     <img {...props} alt={props.alt} />
   ),
 }))
@@ -123,6 +122,7 @@ describe('Home Page - AI Fitness Coach Landing Page', () => {
         { text: 'Features', href: '/features' },
         { text: 'About', href: '/about' },
         { text: 'Profile', href: '/profile' },
+        { text: 'Body Fat', href: '/body-fat' },
         { text: 'Sign In', href: '/login' },
       ]
       
@@ -230,6 +230,7 @@ describe('Home Page - AI Fitness Coach Landing Page', () => {
       const features = [
         'Smart Calorie Tracking',
         'Seamless Weight Tracking',
+        'Body Fat Tracking',
         'AI-Powered Insights',
         'Holistic Health Tracking',
         'Sleep Integration',
