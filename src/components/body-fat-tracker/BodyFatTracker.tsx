@@ -88,6 +88,7 @@ export default function BodyFatTracker() {
             supabase
               .from("weight_logs")
               .select("id, weight_kg, body_fat_percentage, recorded_at, source, created_at")
+              .eq("user_id", user.id)
               .not("body_fat_percentage", "is", null)
               .order("recorded_at", { ascending: false })
               .limit(12),
