@@ -3,7 +3,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Brain, Camera, Scale, Heart, Moon, TrendingUp, ArrowRight, Sparkles, Target, Users } from "lucide-react"
+import { Brain, Camera, Scale, Heart, Moon, TrendingUp, ArrowRight, Sparkles, Target, Users, Droplets } from "lucide-react"
 import { WeightProgressChart, CalorieIntakeChart, MoodSleepChart } from "@/components/dashboard-preview"
 
 /**
@@ -33,6 +33,9 @@ export default function HomePage() {
               </Link>
               <Link href="/profile" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Profile
+              </Link>
+              <Link href="/body-fat" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Body Fat
               </Link>
               <Link href="/login" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Sign In
@@ -70,10 +73,10 @@ export default function HomePage() {
               Real Results
             </span>
           </h1>
-          <p className="text-xl text-slate-200 mb-8 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-slate-200 mb-8 max-w-3xl mx-auto leading-relaxed">
             Transform your health journey with intelligent recommendations that adapt to your lifestyle. Track weight,
-            calories, sleep, and mood while our AI provides personalized guidance for sustainable success.
-          </p>
+            body fat, calories, sleep, and mood while our AI provides personalized guidance for sustainable success.
+            </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button size="lg" className="text-lg px-8 py-6 bg-white text-slate-900 hover:bg-slate-100" asChild>
               <Link href="/login">
@@ -142,7 +145,20 @@ export default function HomePage() {
                 <h3 className="text-xl font-semibold mb-3">Seamless Weight Tracking</h3>
                 <p className="text-slate-600">
                   Connect your smart scale or Apple HealthKit for automatic weight tracking with intelligent trend
-                  analysis and progress visualization.
+                  analysis, body composition support, and progress visualization.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center mb-4">
+                  <Droplets className="w-6 h-6 text-cyan-600" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Body Fat Tracking</h3>
+                <p className="text-slate-600">
+                  Log body fat percentage together with your weight to monitor composition changes over time and spot
+                  meaningful trends beyond the scale alone.
                 </p>
               </CardContent>
             </Card>

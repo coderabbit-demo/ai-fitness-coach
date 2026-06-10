@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, User, Save, ArrowLeft, Target, Activity, Heart, AlertCircle, Scale } from "lucide-react"
+import { Loader2, User, Save, ArrowLeft, Target, Activity, Heart, AlertCircle, Scale, Droplets } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { logError } from "@/lib/logger"
@@ -666,9 +666,17 @@ export default function ProfilePage() {
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setIsEditing(true)}>
-                  Edit Profile
-                </Button>
+                <>
+                  <Button variant="outline" asChild>
+                    <Link href="/body-fat">
+                      <Droplets className="w-4 h-4 mr-2" />
+                      Body Fat Tracker
+                    </Link>
+                  </Button>
+                  <Button onClick={() => setIsEditing(true)}>
+                    Edit Profile
+                  </Button>
+                </>
               )}
             </CardContent>
           </Card>
@@ -676,4 +684,4 @@ export default function ProfilePage() {
       </div>
     </div>
   )
-} 
+}

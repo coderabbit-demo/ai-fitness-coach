@@ -4,6 +4,7 @@
 
 App that lets you put the pieces together for your fitness life. 
 - Connects to your smartscale/healthkit to get your weight 
+- Lets you log body fat percentage together with weight history
 - Has an integrated calorie tracker
 - Implements AI to provide recommendations that take a holistic approach: 
     - Your weight
@@ -28,6 +29,11 @@ In many ways it isn't. Except for a couple of critical factors: The unit of meas
 - Tailwind
 - Vercel AI SDK
 - Shadcn for UI
+
+## Current Modules
+- `Profile` for user details, health preferences, and baseline metrics
+- `Calorie Tracker` for meal logging and AI nutrition analysis
+- `Body Fat Tracker` for manual body fat readings paired with weight history
 
 
 ## Development & Debugging
