@@ -32,6 +32,10 @@ In many ways it isn't. Except for a couple of critical factors: The unit of meas
 
 ## Development & Debugging
 
+### Theme Switching
+
+The app follows the system color preference by default. The navigation toggle switches from the effective theme to the opposite theme, including on the first click when the system prefers dark mode. A manual selection persists across page refreshes.
+
 ### Comprehensive Logging System
 
 This project includes a comprehensive Winston-based logging system for debugging authentication and other issues:

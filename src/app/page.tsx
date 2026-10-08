@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Brain, Camera, Scale, Heart, Moon, TrendingUp, ArrowRight, Sparkles, Target, Users } from "lucide-react"
 import { WeightProgressChart, CalorieIntakeChart, MoodSleepChart } from "@/components/dashboard-preview"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 /**
  * Displays the main landing page for the AI Fitness Coach app, featuring navigation, hero section with dashboard previews, feature highlights, value proposition, call to action, and footer.
@@ -37,6 +38,7 @@ export default function HomePage() {
               <Link href="/login" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Sign In
               </Link>
+              <ThemeToggle />
               <Button asChild>
                 <Link href="https://github.com/edgarcerecerez/ai-fitness-coach" className="flex items-center gap-2">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
