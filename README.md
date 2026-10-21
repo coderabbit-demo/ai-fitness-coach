@@ -59,5 +59,48 @@ The login system includes detailed logging for:
 
 See `docs/DEBUGGING.md` for the complete debugging guide.
 
+## Lap tracker
+
+Open **Track Laps** on the home page or visit `/lap-tracker` after signing in.
+Start a session, record laps, pause/resume, and finish. The average includes only
+completed laps and stays empty until the first lap. On finishing, explicitly
+record or discard the partial final lap. Discarding it leaves total active time
+intact while excluding it from lap history and the average. Sessions with no
+completed laps can also be saved (their average remains empty).
+
+Timing uses monotonic timestamps (`performance.now()`), so delayed rendering in a
+background tab does not slow the timer. Paused time is excluded. Calculations and
+storage retain fractional milliseconds; only displayed times round to hundredths.
+In-progress/unsaved sessions live in the current tab: keep the page open until the
+save succeeds. Finished sessions are immutable, with a limit of 7 days of active
+time and 10,000 laps per session. GPS, wearables, and cross-session comparisons
+are outside this feature.
+
+### Database and API
+
+Apply `supabase/migrations/007_create_lap_sessions.sql` through your usual Supabase
+migration process **before releasing the feature** (for a linked development
+project, `npx supabase db push`; for a local stack, `npx supabase db reset`). Never
+reset a shared or production database. The migration adds `lap_sessions` with
+row-level security and grants authenticated users only SELECT/INSERT on their
+own rows. No service-role key is used by the application.
+
+- `GET /api/lap-sessions?offset=0`: 20 sessions per page, newest first, restricted
+  to the signed-in user. Responses are private and not cached.
+- `POST /api/lap-sessions`: accepts `{ id, started_at, finished_at, elapsed_ms,
+  laps_ms }`. Use a stable UUID and UTC ISO timestamps from `toISOString()`.
+  Ownership comes from verified cookie authentication; lap order is preserved.
+  The complete session is written atomically. Repeating the same ID and payload
+  returns the saved row; a different payload with the same ID returns 409. IDs
+  are scoped per user. Save errors keep the session available for retry.
+
+### Feature validation
+
+Run `npm run test:lap-tracker` for timing, input validation, API, component, and
+PostgreSQL RLS/constraint tests. The database tests use an isolated in-memory
+PostgreSQL engine and never contact a live Supabase project. Run
+`npm run typecheck:lap-tracker` and `npm run lint:lap-tracker` for the feature's
+TypeScript and ESLint checks, and `npm run format:lap-tracker` for formatting.
+
 # Changelog
 For this project, I'll be tracking changes in this doc. 

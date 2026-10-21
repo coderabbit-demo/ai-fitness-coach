@@ -15,6 +15,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Uses Jest and React Testing Library
 - Example test files: `src/components/ui/input.test.tsx`, `src/lib/logger.test.ts`
 - Run tests with standard Jest commands (not specified in package.json)
+- Lap tracker: `npm run test:lap-tracker`, `npm run typecheck:lap-tracker`,
+  `npm run lint:lap-tracker`, and `npm run format:lap-tracker`. Its dedicated Jest
+  config covers timing, APIs, UI, and isolated PostgreSQL RLS tests.
 
 ### Database
 - Uses Supabase as database and authentication provider
@@ -53,12 +56,15 @@ src/
 ```
 
 ### Database Schema
-The application uses five main tables:
+The application uses six main tables:
 - `user_profiles` - User demographic and preference data
 - `weight_logs` - Weight tracking with source attribution
 - `nutrition_logs` - Food intake with AI-analyzed nutrition data
 - `mood_logs` - Mental health and wellness tracking
 - `ai_recommendations` - AI-generated health recommendations
+- `lap_sessions` - Immutable finished sessions, ordered fractional-millisecond
+  lap times, and total active time. Authenticated users have SELECT/INSERT only;
+  stable per-user session IDs make retries safe without overwriting data.
 
 All tables use Row Level Security (RLS) with user-specific access policies.
 
