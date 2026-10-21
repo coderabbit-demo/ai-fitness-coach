@@ -4,6 +4,16 @@ import { createClient } from '@/utils/supabase/server'
 
 jest.mock('@/utils/supabase/server', () => ({ createClient: jest.fn() }))
 
+function authRequest(
+  url: string,
+  init: NonNullable<ConstructorParameters<typeof NextRequest>[1]> = {},
+) {
+  return new NextRequest(url, {
+    ...init,
+    headers: { ...init.headers, 'X-Lap-Tracker-User': 'user-a' },
+  })
+}
+
 const session = {
   id: 'b3b286cc-8ce6-4518-b6d3-b663beb88f78',
   started_at: '2026-10-21T10:00:00.000Z',
@@ -12,7 +22,7 @@ const session = {
   laps_ms: [60000.125, 65000.125, 55000.125],
 }
 const request = (value: unknown = session) =>
-  new NextRequest('http://localhost/api/lap-sessions', {
+  authRequest('http://localhost/api/lap-sessions', {
     method: 'POST',
     body: JSON.stringify(value),
   })
@@ -41,7 +51,7 @@ beforeEach(() => jest.clearAllMocks())
 it('requires a verified user for both APIs without accessing tables', async () => {
   const { client } = mockClient(null)
   expect(
-    (await GET(new NextRequest('http://localhost/api/lap-sessions'))).status,
+    (await GET(authRequest('http://localhost/api/lap-sessions'))).status,
   ).toBe(401)
   expect((await POST(request())).status).toBe(401)
   expect(client.from).not.toHaveBeenCalled()
@@ -60,11 +70,14 @@ it('rejects a failed auth verification even if a user object is present', async 
 it('filters history by the verified user, pages deterministically, and prevents caching', async () => {
   const { query } = mockClient()
   const response = await GET(
-    new NextRequest('http://localhost/api/lap-sessions?offset=20'),
+    authRequest('http://localhost/api/lap-sessions?offset=20'),
   )
   expect(response.status).toBe(200)
   expect(query.eq).toHaveBeenCalledWith('user_id', 'user-a')
   expect(query.range).toHaveBeenCalledWith(20, 39)
+  expect(query.select).toHaveBeenCalledWith(
+    'id, started_at, finished_at, elapsed_ms, lap_count, completed_ms, created_at',
+  )
   expect(query.order).toHaveBeenCalledWith('id', { ascending: false })
   expect(response.headers.get('Cache-Control')).toBe('private, no-store')
 })
@@ -76,7 +89,7 @@ it.each(['-1', '1.5', '1abc', 'Infinity', '1000001'])(
     expect(
       (
         await GET(
-          new NextRequest(`http://localhost/api/lap-sessions?offset=${offset}`),
+          authRequest(`http://localhost/api/lap-sessions?offset=${offset}`),
         )
       ).status,
     ).toBe(400)
@@ -116,7 +129,7 @@ it('rejects malformed JSON and invalid times before inserting', async () => {
   expect(
     (
       await POST(
-        new NextRequest('http://localhost/api/lap-sessions', {
+        authRequest('http://localhost/api/lap-sessions', {
           method: 'POST',
           body: '{',
         }),
@@ -142,7 +155,7 @@ it('returns retryable errors without leaking database details', async () => {
     error: { message: 'private database details' },
   })
   expect(
-    (await GET(new NextRequest('http://localhost/api/lap-sessions'))).status,
+    (await GET(authRequest('http://localhost/api/lap-sessions'))).status,
   ).toBe(500)
 })
 
@@ -154,4 +167,24 @@ it('allows a lost confirmation to be retried with the same payload', async () =>
   })
   expect((await POST(request())).status).toBe(500)
   expect((await POST(request())).status).toBe(200)
+})
+
+it('rejects cross-account retries and history pagination before accessing any rows', async () => {
+  const { client } = mockClient({ id: 'user-b' })
+  const get = await GET(
+    authRequest('http://localhost/api/lap-sessions?offset=20'),
+  )
+  const post = await POST(request())
+  expect(get.status).toBe(409)
+  expect(post.status).toBe(409)
+  expect(await post.json()).toMatchObject({ code: 'ACCOUNT_CHANGED' })
+  expect(client.from).not.toHaveBeenCalled()
+})
+
+it('requires the tracker account binding even for authenticated requests', async () => {
+  const { client } = mockClient()
+  expect(
+    (await GET(new NextRequest('http://localhost/api/lap-sessions'))).status,
+  ).toBe(400)
+  expect(client.from).not.toHaveBeenCalled()
 })

@@ -2,6 +2,13 @@
 import '@testing-library/jest-dom'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import LapTracker from './LapTracker'
+import { createClient } from '@/utils/supabase/client'
+
+jest.mock('@/utils/supabase/client', () => ({ createClient: jest.fn() }))
+let authListener: (
+  event: string,
+  session: { user: { id: string } } | null,
+) => void
 
 let clock = 0
 const id = 'b3b286cc-8ce6-4518-b6d3-b663beb88f78'
@@ -10,6 +17,14 @@ const response = (data: unknown, ok = true) =>
 
 beforeEach(() => {
   jest.useFakeTimers()
+  jest.mocked(createClient).mockReturnValue({
+    auth: {
+      onAuthStateChange: (callback: typeof authListener) => {
+        authListener = callback
+        return { data: { subscription: { unsubscribe: jest.fn() } } }
+      },
+    },
+  } as never)
   clock = 0
   jest.spyOn(performance, 'now').mockImplementation(() => clock)
   jest.spyOn(crypto, 'randomUUID').mockReturnValue(id)
@@ -21,7 +36,7 @@ afterEach(() => {
 })
 
 async function mount() {
-  render(<LapTracker />)
+  render(<LapTracker userId="user-a" />)
   await screen.findByText(/No saved sessions yet/)
 }
 const click = (name: string) =>
@@ -98,7 +113,17 @@ it('freezes finish, offers both partial choices, preserves failed saves, and ret
       data:
         init?.method === 'POST'
           ? firstPayload
-          : [{ ...firstPayload, created_at: firstPayload.finished_at }],
+          : [
+              {
+                ...firstPayload,
+                lap_count: firstPayload.laps_ms.length,
+                completed_ms: firstPayload.laps_ms.reduce(
+                  (sum: number, lap: number) => sum + lap,
+                  0,
+                ),
+                created_at: firstPayload.finished_at,
+              },
+            ],
     }),
   )
   click('Retry save')
@@ -138,7 +163,8 @@ it('reports history errors separately and supports loading older sessions', asyn
     started_at: '2026-10-21T10:00:00.000Z',
     finished_at: '2026-10-21T10:03:00.000Z',
     elapsed_ms: 180000,
-    laps_ms: [60000, 65000, 55000],
+    lap_count: 3,
+    completed_ms: 180000,
     created_at: '2026-10-21T10:03:01.000Z',
   }
   jest
@@ -146,7 +172,7 @@ it('reports history errors separately and supports loading older sessions', asyn
     .mockImplementationOnce(() =>
       response({ error: 'History unavailable' }, false),
     )
-  render(<LapTracker />)
+  render(<LapTracker userId="user-a" />)
   await screen.findByText('History unavailable')
   jest.mocked(fetch).mockImplementationOnce(() =>
     response({
@@ -169,6 +195,7 @@ it('reports history errors separately and supports loading older sessions', asyn
   await waitFor(() =>
     expect(fetch).toHaveBeenLastCalledWith('/api/lap-sessions?offset=20', {
       cache: 'no-store',
+      headers: { 'X-Lap-Tracker-User': 'user-a' },
     }),
   )
   await waitFor(() =>
@@ -177,4 +204,149 @@ it('reports history errors separately and supports loading older sessions', asyn
     ).not.toBeInTheDocument(),
   )
   expect(screen.getAllByText(/3 laps · Average 01:00.00/)).toHaveLength(21)
+})
+
+const savedSummary = {
+  id,
+  started_at: '2026-10-21T10:00:00.000Z',
+  finished_at: '2026-10-21T10:03:00.000Z',
+  elapsed_ms: 180000,
+  lap_count: 10000,
+  completed_ms: 180000,
+  created_at: '2026-10-21T10:03:01.000Z',
+}
+
+it('loads summaries without hidden lap tables, fetches details on expansion, and caps rendered rows', async () => {
+  jest.mocked(fetch).mockImplementation((input) =>
+    response({
+      data: String(input).endsWith(id)
+        ? { ...savedSummary, laps_ms: Array(10000).fill(18) }
+        : Array.from({ length: 20 }, (_, index) => ({
+            ...savedSummary,
+            id: index === 0 ? id : `${index}`,
+          })),
+    }),
+  )
+  const { container } = render(<LapTracker userId="user-a" />)
+  await screen.findByRole('button', { name: 'Load older sessions' })
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(screen.getAllByRole('table')).toHaveLength(1)
+  const details = container.querySelector('details')!
+  details.open = true
+  fireEvent(details, new Event('toggle'))
+  await screen.findByText('Showing laps 9901–10000 of 10000')
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(screen.getAllByRole('row')).toHaveLength(103)
+  click('Earlier laps')
+  expect(
+    screen.getByText('Showing laps 9801–9900 of 10000'),
+  ).toBeInTheDocument()
+  details.open = false
+  fireEvent(details, new Event('toggle'))
+  await waitFor(() => expect(screen.getAllByRole('table')).toHaveLength(1))
+})
+
+it('does not recompute saved-session summaries during timer repaints', async () => {
+  const count = jest.fn(() => 10000)
+  const summary = {
+    ...savedSummary,
+    get lap_count() {
+      return count()
+    },
+  }
+  jest.mocked(fetch).mockImplementation(() => response({ data: [summary] }))
+  render(<LapTracker userId="user-a" />)
+  await screen.findByText(/10000 laps · Average/)
+  const before = count.mock.calls.length
+  click('Start')
+  for (let i = 1; i < 20; i++) repaint(i * 1000)
+  expect(count).toHaveBeenCalledTimes(before)
+})
+
+it('clears unsaved timing and retained history on an auth account switch', async () => {
+  jest
+    .mocked(fetch)
+    .mockImplementation(() => response({ data: [savedSummary] }))
+  render(<LapTracker userId="user-a" />)
+  await screen.findByText(/10000 laps · Average/)
+  click('Start')
+  repaint(60000)
+  click('Lap')
+  act(() => authListener('SIGNED_IN', { user: { id: 'user-b' } }))
+  expect(screen.getByText(/tracker was cleared/)).toBeInTheDocument()
+  expect(screen.queryByTestId('lap-count')).not.toBeInTheDocument()
+  expect(screen.queryByText(/10000 laps · Average/)).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Save session' }),
+  ).not.toBeInTheDocument()
+})
+
+it('rejects cross-account save recovery and clears retained state on a server mismatch', async () => {
+  await mount()
+  click('Start')
+  repaint(1000)
+  click('Finish')
+  click('Record final lap')
+  jest
+    .mocked(fetch)
+    .mockImplementationOnce(() =>
+      response({ error: 'Account changed', code: 'ACCOUNT_CHANGED' }, false),
+    )
+  click('Save session')
+  await screen.findByText(/tracker was cleared/)
+  expect(jest.mocked(fetch).mock.calls[1][1]?.headers).toMatchObject({
+    'X-Lap-Tracker-User': 'user-a',
+  })
+  expect(screen.queryByText('Session saved.')).not.toBeInTheDocument()
+})
+
+it('ignores old history responses arriving after account invalidation', async () => {
+  let resolve!: (response: Response) => void
+  jest.mocked(fetch).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+  )
+  render(<LapTracker userId="user-a" />)
+  act(() => authListener('SIGNED_OUT', null))
+  await act(async () => {
+    resolve({
+      ok: true,
+      json: async () => ({ data: [savedSummary] }),
+    } as Response)
+  })
+  expect(screen.getByText(/tracker was cleared/)).toBeInTheDocument()
+  expect(screen.queryByText(/10000 laps · Average/)).not.toBeInTheDocument()
+})
+
+it('ignores an old save confirmation after an account switch', async () => {
+  await mount()
+  click('Start')
+  repaint(1000)
+  click('Finish')
+  click('Record final lap')
+  let resolve!: (response: Response) => void
+  jest.mocked(fetch).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+  )
+  click('Save session')
+  act(() => authListener('SIGNED_IN', { user: { id: 'user-b' } }))
+  await act(async () => {
+    resolve({ ok: true, json: async () => ({ data: {} }) } as Response)
+  })
+  expect(screen.queryByText('Session saved.')).not.toBeInTheDocument()
+  expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+it('keeps the current capture when the same account refreshes its token', async () => {
+  await mount()
+  click('Start')
+  repaint(1000)
+  click('Lap')
+  act(() => authListener('TOKEN_REFRESHED', { user: { id: 'user-a' } }))
+  expect(screen.getByTestId('lap-count')).toHaveTextContent('1')
 })

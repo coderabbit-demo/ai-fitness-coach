@@ -5,14 +5,68 @@ export interface LapTimer {
   status: TimerStatus
   elapsedMs: number
   runningSince: number | null
-  lapsMs: number[]
+  laps: LapChunk | null
+  lapCount: number
+  completedMs: number
+}
+
+interface LapChunk {
+  previous: LapChunk | null
+  values: readonly number[]
+}
+
+// Persistent chunks bound each append to 100 copied values, rather than
+// copying the entire session on every lap. Older chunks remain shared.
+const CHUNK_SIZE = 100
+
+function appendLap(timer: LapTimer, lap: number): LapTimer {
+  const chunk = timer.laps
+  return {
+    ...timer,
+    laps:
+      chunk && chunk.values.length < CHUNK_SIZE
+        ? { previous: chunk.previous, values: [...chunk.values, lap] }
+        : { previous: chunk, values: [lap] },
+    lapCount: timer.lapCount + 1,
+    completedMs: timer.completedMs + lap,
+  }
+}
+
+export function completedLaps(timer: Pick<LapTimer, 'laps'>): number[] {
+  const chunks: (readonly number[])[] = []
+  for (let chunk = timer.laps; chunk; chunk = chunk.previous)
+    chunks.push(chunk.values)
+  return chunks.reverse().flatMap((values) => [...values])
+}
+
+export function lapWindow(
+  timer: Pick<LapTimer, 'laps' | 'lapCount'>,
+  start: number,
+  count: number,
+): number[] {
+  const parts: (readonly number[])[] = []
+  let end = timer.lapCount
+  for (let chunk = timer.laps; chunk && end > start; chunk = chunk.previous) {
+    const chunkStart = end - chunk.values.length
+    if (chunkStart < start + count)
+      parts.push(
+        chunk.values.slice(
+          Math.max(0, start - chunkStart),
+          Math.min(chunk.values.length, start + count - chunkStart),
+        ),
+      )
+    end = chunkStart
+  }
+  return parts.reverse().flatMap((values) => [...values])
 }
 
 export const emptyTimer: LapTimer = {
   status: 'idle',
   elapsedMs: 0,
   runningSince: null,
-  lapsMs: [],
+  laps: null,
+  lapCount: 0,
+  completedMs: 0,
 }
 
 export type TimerAction =
@@ -30,10 +84,7 @@ export function elapsedTime(timer: LapTimer, now: number): number {
 }
 
 export function currentLapTime(timer: LapTimer, now: number): number {
-  return Math.max(
-    0,
-    elapsedTime(timer, now) - timer.lapsMs.reduce((sum, lap) => sum + lap, 0),
-  )
+  return Math.max(0, elapsedTime(timer, now) - timer.completedMs)
 }
 
 export function averageLapTime(lapsMs: readonly number[]): number | null {
@@ -54,7 +105,7 @@ export function lapTimerReducer(
     case 'lap': {
       if (timer.status !== 'running') return timer
       const lap = currentLapTime(timer, action.now)
-      return lap > 0 ? { ...timer, lapsMs: [...timer.lapsMs, lap] } : timer
+      return lap > 0 ? appendLap(timer, lap) : timer
     }
     case 'pause':
     case 'finish':
@@ -76,14 +127,9 @@ export function lapTimerReducer(
     case 'complete': {
       if (timer.status !== 'finishing') return timer
       const partial = currentLapTime(timer, 0)
-      return {
-        ...timer,
-        status: 'finished',
-        lapsMs:
-          action.recordPartial && partial > 0
-            ? [...timer.lapsMs, partial]
-            : timer.lapsMs,
-      }
+      const finished =
+        action.recordPartial && partial > 0 ? appendLap(timer, partial) : timer
+      return { ...finished, status: 'finished' }
     }
     case 'cancel-finish':
       return timer.status === 'finishing'

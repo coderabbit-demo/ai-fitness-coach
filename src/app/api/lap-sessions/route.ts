@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import {
+  authenticateLapRequest,
+  lapResponseHeaders as headers,
+} from '@/lib/lap-session-auth'
 import {
   parseLapSession,
   sameLapSession,
@@ -8,20 +11,14 @@ import {
 
 export const dynamic = 'force-dynamic'
 const columns = 'id, started_at, finished_at, elapsed_ms, laps_ms, created_at'
-const headers = { 'Cache-Control': 'private, no-store' }
+const summaryColumns =
+  'id, started_at, finished_at, elapsed_ms, lap_count, completed_ms, created_at'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user)
-      return NextResponse.json(
-        { error: 'Sign in to view sessions.' },
-        { status: 401, headers },
-      )
+    const auth = await authenticateLapRequest(request)
+    if (auth.error) return auth.error
+    const { supabase, user } = auth
 
     const offsetParam = request.nextUrl.searchParams.get('offset') ?? '0'
     const offset = Number(offsetParam)
@@ -37,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
     const { data, error } = await supabase
       .from('lap_sessions')
-      .select(columns)
+      .select(summaryColumns)
       .eq('user_id', user.id)
       .order('started_at', { ascending: false })
       .order('id', { ascending: false })
@@ -58,16 +55,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user)
-      return NextResponse.json(
-        { error: 'Sign in again to save this session.' },
-        { status: 401, headers },
-      )
+    const auth = await authenticateLapRequest(request)
+    if (auth.error) return auth.error
+    const { supabase, user } = auth
 
     let body: unknown
     try {

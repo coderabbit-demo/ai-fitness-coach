@@ -28,7 +28,7 @@ export default async function LapTrackerPage() {
             Time each lap, find your average, and save your session.
           </p>
         </header>
-        <LapTracker />
+        <LapTracker userId={user.id} />
       </div>
     </main>
   )

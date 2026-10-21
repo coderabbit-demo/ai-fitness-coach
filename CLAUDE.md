@@ -65,6 +65,9 @@ The application uses six main tables:
 - `lap_sessions` - Immutable finished sessions, ordered fractional-millisecond
   lap times, and total active time. Authenticated users have SELECT/INSERT only;
   stable per-user session IDs make retries safe without overwriting data.
+  Generated lap counts/totals support summary-only history; a separate owned
+  detail endpoint loads lap arrays. All session requests check the tracker tab's
+  original account ID against the verified principal before accessing rows.
 
 All tables use Row Level Security (RLS) with user-specific access policies.
 

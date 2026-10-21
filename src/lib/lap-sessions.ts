@@ -2,6 +2,7 @@
 export const MAX_SESSION_MS = 7 * 24 * 60 * 60 * 1000
 export const MAX_LAPS = 10000
 export const SESSION_PAGE_SIZE = 20
+export const LAP_OWNER_HEADER = 'X-Lap-Tracker-User'
 
 export interface LapSessionInput {
   id: string
@@ -15,9 +16,18 @@ export interface LapSession extends LapSessionInput {
   created_at: string
 }
 
+export interface LapSessionSummary extends Omit<LapSession, 'laps_ms'> {
+  lap_count: number
+  completed_ms: number
+}
+
 const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const timestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+
+export function isLapSessionId(value: string): boolean {
+  return uuid.test(value)
+}
 
 function isTimestamp(value: unknown): value is string {
   return (

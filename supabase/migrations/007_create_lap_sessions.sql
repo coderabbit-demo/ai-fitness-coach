@@ -14,6 +14,14 @@ AS $$
         AND COALESCE((SELECT sum(lap) FROM unnest(laps) AS lap), 0) <= elapsed + 0.000001;
 $$;
 
+CREATE FUNCTION public.total_lap_time(laps DOUBLE PRECISION[])
+RETURNS DOUBLE PRECISION
+LANGUAGE sql IMMUTABLE STRICT
+SET search_path = ''
+AS $$
+    SELECT COALESCE(sum(lap), 0) FROM unnest(laps) AS lap;
+$$;
+
 CREATE TABLE public.lap_sessions (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     id UUID NOT NULL,
@@ -22,6 +30,8 @@ CREATE TABLE public.lap_sessions (
     elapsed_ms DOUBLE PRECISION NOT NULL CHECK (elapsed_ms >= 0 AND elapsed_ms <= 604800000),
     laps_ms DOUBLE PRECISION[] NOT NULL CHECK (public.valid_lap_times(laps_ms, elapsed_ms)),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    lap_count INTEGER GENERATED ALWAYS AS (cardinality(laps_ms)) STORED,
+    completed_ms DOUBLE PRECISION GENERATED ALWAYS AS (public.total_lap_time(laps_ms)) STORED,
     PRIMARY KEY (user_id, id)
 );
 

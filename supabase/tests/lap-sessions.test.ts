@@ -153,22 +153,30 @@ it('accepts empty lap history and rejects invalid timestamps and multidimensiona
   await expect(
     asUser(
       userA,
-      `INSERT INTO public.lap_sessions VALUES ($1, gen_random_uuid(), '2026-10-21', '2026-10-20', 0, '{}', now())`,
+      `INSERT INTO public.lap_sessions (user_id, id, started_at, finished_at, elapsed_ms, laps_ms, created_at) VALUES ($1, gen_random_uuid(), '2026-10-21', '2026-10-20', 0, '{}', now())`,
       [userA],
     ),
   ).rejects.toMatchObject({ code: '23514' })
   await expect(
     asUser(
       userA,
-      `INSERT INTO public.lap_sessions VALUES ($1, gen_random_uuid(), '2026-10-21', 'infinity', 0, '{}', now())`,
+      `INSERT INTO public.lap_sessions (user_id, id, started_at, finished_at, elapsed_ms, laps_ms, created_at) VALUES ($1, gen_random_uuid(), '2026-10-21', 'infinity', 0, '{}', now())`,
       [userA],
     ),
   ).rejects.toMatchObject({ code: '23514' })
   await expect(
     asUser(
       userA,
-      `INSERT INTO public.lap_sessions VALUES ($1, gen_random_uuid(), '2026-10-21', '2026-10-21', 10, '{{1,2},{3,4}}', now())`,
+      `INSERT INTO public.lap_sessions (user_id, id, started_at, finished_at, elapsed_ms, laps_ms, created_at) VALUES ($1, gen_random_uuid(), '2026-10-21', '2026-10-21', 10, '{{1,2},{3,4}}', now())`,
       [userA],
     ),
   ).rejects.toMatchObject({ code: '23514' })
+})
+
+it('generates summary totals without returning or trusting client lap counts', async () => {
+  const result = await asUser(
+    userA,
+    'SELECT lap_count, completed_ms FROM public.lap_sessions',
+  )
+  expect(result.rows).toEqual([{ lap_count: 3, completed_ms: 180000.375 }])
 })
