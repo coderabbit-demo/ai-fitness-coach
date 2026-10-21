@@ -59,5 +59,63 @@ The login system includes detailed logging for:
 
 See `docs/DEBUGGING.md` for the complete debugging guide.
 
+## Lap tracker
+
+Open **Track Laps** on the home page or visit `/lap-tracker` after signing in.
+Start a session, record laps, pause/resume, and finish. The average includes only
+completed laps and stays empty until the first lap. On finishing, explicitly
+record or discard the partial final lap. Discarding it leaves total active time
+intact while excluding it from lap history and the average. Sessions with no
+completed laps can also be saved (their average remains empty).
+
+Timing uses monotonic timestamps (`performance.now()`), so delayed rendering in a
+background tab does not slow the timer. Paused time is excluded. Calculations and
+storage retain fractional milliseconds; only displayed times round to hundredths.
+The timer keeps an incremental completed-lap total and appends into bounded
+chunks. Lap tables show at most 100 rows with paging. Saved history is isolated
+from timer repaints and loads lap details only when a session is expanded.
+In-progress/unsaved sessions live in the current tab: keep the page open until the
+save succeeds. Finished sessions are immutable, with a limit of 7 days of active
+time and 10,000 laps per session. GPS, wearables, and cross-session comparisons
+are outside this feature.
+
+### Database and API
+
+Apply `supabase/migrations/007_create_lap_sessions.sql` through your usual Supabase
+migration process **before releasing the feature** (for a linked development
+project, `npx supabase db push`; for a local stack, `npx supabase db reset`). Never
+reset a shared or production database. The migration adds `lap_sessions` with
+row-level security and grants authenticated users only SELECT/INSERT on their
+own rows. No service-role key is used by the application.
+
+Every session request must include `X-Lap-Tracker-User` with the account ID that
+opened the tracker (provided by the authenticated server page). The API still
+derives ownership from verified cookie authentication; the header only detects
+account changes. A mismatch returns 409 with code `ACCOUNT_CHANGED` before any
+table access. Signing out or switching accounts clears the open tracker and its
+pending responses; reload to use the new account. Same-account token refreshes
+preserve the capture. If authentication expires, sign back in to the same account
+before retrying. An explicit sign-out clears any unsaved capture.
+
+- `GET /api/lap-sessions?offset=0`: 20 session summaries per page, newest first,
+  restricted to the signed-in user. Returns database-generated `lap_count` and
+  `completed_ms` without lap arrays. Responses are private and not cached.
+- `GET /api/lap-sessions/:id`: loads the user's ordered lap details on expansion;
+  returns 404 if the session is absent or belongs to another user.
+- `POST /api/lap-sessions`: accepts `{ id, started_at, finished_at, elapsed_ms,
+  laps_ms }`. Use a stable UUID and UTC ISO timestamps from `toISOString()`.
+  Lap order is preserved.
+  The complete session is written atomically. Repeating the same ID and payload
+  returns the saved row; a different payload with the same ID returns 409. IDs
+  are scoped per user. Save errors keep the session available for retry.
+
+### Feature validation
+
+Run `npm run test:lap-tracker` for timing, input validation, API, component, and
+PostgreSQL RLS/constraint tests. The database tests use an isolated in-memory
+PostgreSQL engine and never contact a live Supabase project. Run
+`npm run typecheck:lap-tracker` and `npm run lint:lap-tracker` for the feature's
+TypeScript and ESLint checks, and `npm run format:lap-tracker` for formatting.
+
 # Changelog
 For this project, I'll be tracking changes in this doc. 

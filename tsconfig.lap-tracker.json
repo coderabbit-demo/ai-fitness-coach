@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/lib/lap-*.ts",
+    "src/app/api/lap-sessions/**/*.ts",
+    "src/app/lap-tracker/**/*.tsx",
+    "src/components/lap-tracker/**/*.tsx",
+    "supabase/tests/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

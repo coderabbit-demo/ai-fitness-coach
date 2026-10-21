@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:lap-tracker": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.lap-tracker.config.cjs --runInBand",
+    "lint:lap-tracker": "eslint src/lib/lap-*.ts src/app/api/lap-sessions src/app/lap-tracker src/components/lap-tracker supabase/tests/lap-sessions.test.ts",
+    "format:lap-tracker": "prettier --write --single-quote --no-semi \"src/lib/lap-*.ts\" \"src/app/api/lap-sessions/**/*.ts\" \"src/app/lap-tracker/**/*.tsx\" \"src/components/lap-tracker/**/*.tsx\" \"supabase/tests/**/*.ts\" jest.lap-tracker.config.cjs",
+    "typecheck:lap-tracker": "tsc --noEmit -p tsconfig.lap-tracker.json"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -34,8 +38,11 @@
     "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.19.4",
     "@types/react": "^19",
@@ -46,7 +53,9 @@
     "eslint-config-next": "15.3.3",
     "husky": "^9.1.7",
     "jest": "^30.0.4",
+    "jest-environment-jsdom": "^30.5.2",
     "lint-staged": "^16.1.2",
+    "prettier": "^3.9.10",
     "supabase": "^2.26.9",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.0",

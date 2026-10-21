@@ -34,6 +34,9 @@ export default function HomePage() {
               <Link href="/profile" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Profile
               </Link>
+              <Link href="/lap-tracker" className="text-slate-600 hover:text-slate-900 transition-colors">
+                Lap Tracker
+              </Link>
               <Link href="/login" className="text-slate-600 hover:text-slate-900 transition-colors">
                 Sign In
               </Link>
@@ -83,6 +86,9 @@ export default function HomePage() {
             </Button>
             <Button size="lg" variant="outline" className="text-lg px-8 py-6" asChild>
               <Link href="/features">Explore Features</Link>
+            </Button>
+            <Button size="lg" className="text-lg px-8 py-6" asChild>
+              <Link href="/lap-tracker">Track Laps</Link>
             </Button>
           </div>
 
